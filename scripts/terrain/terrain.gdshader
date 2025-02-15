@@ -1,7 +1,7 @@
 shader_type spatial;
 
-render_mode wireframe;
-//render_mode diffuse_lambert, specular_toon;
+//render_mode wireframe;
+render_mode diffuse_lambert, specular_toon;
 
 group_uniforms settings;
 uniform float amplitude = 50.0;

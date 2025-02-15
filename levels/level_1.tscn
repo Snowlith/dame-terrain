@@ -126,10 +126,12 @@ foliage_particles = [NodePath("../FollowPlayerNode/Grass")]
 partition_material = ExtResource("5_gwceb")
 
 [node name="Sprite2D" type="Sprite2D" parent="Terrain/TerrainGenerator"]
+visible = false
 scale = Vector2(0.3, 0.3)
 centered = false
 
 [node name="Sprite2D2" type="Sprite2D" parent="Terrain/TerrainGenerator"]
+visible = false
 position = Vector2(166, 3)
 scale = Vector2(0.3, 0.3)
 centered = false
@@ -163,7 +165,6 @@ update_scale = false
 transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 0, 89.1716, 18.9315)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-visible = false
 position = Vector2(199, 195)
 scale = Vector2(0.755859, 0.734375)
 texture = SubResource("ViewportTexture_vjtdm")
