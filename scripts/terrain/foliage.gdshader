@@ -67,7 +67,7 @@ float get_density(vec3 world_vertex){
 }
 
 vec3 get_normal(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(density_map,0).x);
+	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(normal_map,0).x);
 
 	// Bounds
 	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
@@ -76,8 +76,6 @@ vec3 get_normal(vec3 world_vertex){
 
 	return texture(normal_map, texture_position + normal_map_offset).rgb;
 }
-
-
 
 void start() {
 	//create a grid
@@ -119,7 +117,6 @@ void start() {
 		pos.y = -10000.0;
 	}
 	
-	// ROTATION BULLSHIT COMMENCES
 	// set the base transform (no rotation, facing up)
 	TRANSFORM[0].xyz = vec3(1.0, 0.0, 0.0);
 	TRANSFORM[1].xyz = vec3(0.0, 1.0, 0.0);
