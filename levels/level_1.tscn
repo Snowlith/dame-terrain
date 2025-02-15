@@ -1,0 +1,169 @@
+[gd_scene load_steps=27 format=3 uid="uid://hwx74532ddw5"]
+
+[ext_resource type="Texture2D" uid="uid://c1tbvgldy1vuk" path="res://assets/skies/rogland_clear_night_4k.exr" id="1_kx6l7"]
+[ext_resource type="PackedScene" uid="uid://c0c4at6dndxd6" path="res://scenes/player.tscn" id="2_jirdo"]
+[ext_resource type="Script" uid="uid://cqe3v7smb3uni" path="res://scripts/sun_moon_cycle.gd" id="2_n46q3"]
+[ext_resource type="Script" uid="uid://dvo1ntsvt3g3m" path="res://core/ecs/entity.gd" id="3_kx6l7"]
+[ext_resource type="Script" uid="uid://dhu5oq5e3tsv0" path="res://scripts/terrain/terrain_generator.gd" id="4_btoec"]
+[ext_resource type="Texture2D" uid="uid://di3r0f2n7ui43" path="res://assets/textures/Circular 1 - 512x512.png" id="5_aerfg"]
+[ext_resource type="Material" uid="uid://w54snrsn4ve4" path="res://scripts/terrain/terrain.tres" id="5_gwceb"]
+[ext_resource type="Script" uid="uid://b5k3s7l50c5rj" path="res://scripts/footstep_manager/footstep_profile.gd" id="6_gwceb"]
+[ext_resource type="AudioStream" uid="uid://d1te488gvcb7q" path="res://assets/audio/footsteps/grass/footstep_Grass-01.ogg" id="7_5ot28"]
+[ext_resource type="AudioStream" uid="uid://bdct8miu1fqlv" path="res://assets/audio/footsteps/grass/footstep_Grass-02.ogg" id="8_aerfg"]
+[ext_resource type="Texture2D" uid="uid://b3wno2fi4275s" path="res://assets/textures/test_normal.png" id="8_betor"]
+[ext_resource type="AudioStream" uid="uid://c0m1w5vv8r43j" path="res://assets/audio/footsteps/grass/footstep_Grass-03.ogg" id="9_nmsli"]
+[ext_resource type="AudioStream" uid="uid://cmy315y7l1nhf" path="res://assets/audio/footsteps/grass/footstep_Grass-04.ogg" id="10_betor"]
+[ext_resource type="Shader" uid="uid://tfpdput3mdmm" path="res://scripts/terrain/foliage.gdshader" id="12_betor"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_n46q3"]
+panorama = ExtResource("1_kx6l7")
+energy_multiplier = 0.8
+
+[sub_resource type="Sky" id="Sky_kx6l7"]
+sky_material = SubResource("PanoramaSkyMaterial_n46q3")
+
+[sub_resource type="Environment" id="Environment_n46q3"]
+background_mode = 2
+sky = SubResource("Sky_kx6l7")
+ambient_light_color = Color(0.404033, 0.109982, 0.608412, 1)
+ambient_light_sky_contribution = 0.59
+ambient_light_energy = 0.93
+tonemap_mode = 3
+glow_enabled = true
+fog_enabled = true
+fog_mode = 1
+fog_light_energy = 2.52
+fog_density = 0.965
+fog_aerial_perspective = 1.0
+fog_sky_affect = 0.0
+fog_depth_curve = 0.683021
+fog_depth_begin = 220.0
+fog_depth_end = 300.0
+volumetric_fog_density = 0.01
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_aerfg"]
+frequency = 0.0165
+fractal_octaves = 3
+fractal_lacunarity = 1.31
+fractal_gain = 0.22
+fractal_ping_pong_strength = 2.245
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_nmsli"]
+generate_mipmaps = false
+noise = SubResource("FastNoiseLite_aerfg")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_nmsli"]
+fractal_type = 3
+fractal_octaves = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_betor"]
+noise = SubResource("FastNoiseLite_nmsli")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bgw3c"]
+shader = ExtResource("12_betor")
+shader_parameter/instance_rows = 50
+shader_parameter/instance_spacing = 2.25
+shader_parameter/density_adjust = 1.34
+shader_parameter/orient_to_normal = true
+shader_parameter/orient_up_with_normal = false
+shader_parameter/random_spacing = 1.96
+shader_parameter/min_scale = Vector3(0.43, 0.29, 0.04)
+shader_parameter/max_scale = Vector3(1, 1, 1)
+shader_parameter/height_map_offset = Vector2(0.5, 0.5)
+shader_parameter/steepness_map_offset = Vector2(0.5, 0.5)
+shader_parameter/normal_map = ExtResource("8_betor")
+shader_parameter/normal_map_offset = Vector2(0.5, 0.5)
+shader_parameter/density_map = SubResource("NoiseTexture2D_betor")
+shader_parameter/density_map_offset = Vector2(0.5, 0.5)
+shader_parameter/amplitude = 50.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vjtdm"]
+albedo_color = Color(0.49578, 0.668275, 0.164292, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_lrvbd"]
+material = SubResource("StandardMaterial3D_vjtdm")
+size = Vector3(0.135, 1.175, 0.465)
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vjtdm"]
+streams_count = 4
+stream_0/stream = ExtResource("7_5ot28")
+stream_1/stream = ExtResource("8_aerfg")
+stream_2/stream = ExtResource("9_nmsli")
+stream_3/stream = ExtResource("10_betor")
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_vjtdm"]
+viewport_path = NodePath("SubViewport")
+
+[node name="Level1" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_n46q3")
+
+[node name="Lights" type="Node3D" parent="."]
+script = ExtResource("2_n46q3")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Lights"]
+transform = Transform3D(-0.25949, -0.756981, 0.599704, -0.780999, 0.529757, 0.330754, -0.568072, -0.38254, -0.728668, 0, 0, 0)
+light_color = Color(0.897412, 0.775423, 0.152425, 1)
+light_energy = 1.276
+shadow_enabled = true
+shadow_opacity = 0.69
+shadow_blur = 1.479
+directional_shadow_blend_splits = true
+
+[node name="Terrain" type="StaticBody3D" parent="."]
+physics_interpolation_mode = 2
+script = ExtResource("3_kx6l7")
+
+[node name="TerrainGenerator" type="Node" parent="Terrain" node_paths=PackedStringArray("player_character", "partition_container", "physics_bodies", "foliage_particles")]
+script = ExtResource("4_btoec")
+noise_texture = SubResource("NoiseTexture2D_nmsli")
+falloff_texture = ExtResource("5_aerfg")
+player_character = NodePath("../../Player")
+partition_container = NodePath("../FollowPlayerNode")
+physics_bodies = [NodePath("../../Player")]
+foliage_particles = [NodePath("../FollowPlayerNode/Grass")]
+partition_material = ExtResource("5_gwceb")
+
+[node name="Sprite2D" type="Sprite2D" parent="Terrain/TerrainGenerator"]
+scale = Vector2(0.3, 0.3)
+centered = false
+
+[node name="Sprite2D2" type="Sprite2D" parent="Terrain/TerrainGenerator"]
+position = Vector2(166, 3)
+scale = Vector2(0.3, 0.3)
+centered = false
+
+[node name="FollowPlayerNode" type="Node3D" parent="Terrain"]
+
+[node name="Grass" type="GPUParticles3D" parent="Terrain/FollowPlayerNode"]
+extra_cull_margin = 64.0
+amount = 2500
+lifetime = 0.01
+explosiveness = 1.0
+interpolate = false
+process_material = SubResource("ShaderMaterial_bgw3c")
+draw_pass_1 = SubResource("BoxMesh_lrvbd")
+
+[node name="FootstepProfile" type="Node" parent="Terrain"]
+script = ExtResource("6_gwceb")
+footstep_profile = SubResource("AudioStreamRandomizer_vjtdm")
+
+[node name="Player" parent="." instance=ExtResource("2_jirdo")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 70.9074, 0)
+
+[node name="CameraPivot" type="RemoteTransform3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 0, 18.2642, 18.9315)
+remote_path = NodePath("../../SubViewport/Camera3D")
+update_scale = false
+
+[node name="SubViewport" type="SubViewport" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 0, 89.1716, 18.9315)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+visible = false
+position = Vector2(199, 195)
+scale = Vector2(0.755859, 0.734375)
+texture = SubResource("ViewportTexture_vjtdm")

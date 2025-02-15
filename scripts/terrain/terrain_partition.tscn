@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://x7jqk0koqh7o"]
+
+[ext_resource type="Script" uid="uid://dwfsie5cb72q0" path="res://scripts/terrain/terrain_partition.gd" id="1_p5mk6"]
+
+[node name="TerrainPartition" type="MeshInstance3D"]
+extra_cull_margin = 32.0
+script = ExtResource("1_p5mk6")

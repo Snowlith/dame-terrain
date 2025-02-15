@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3 uid="uid://b6b0fdprwt2nd"]
+
+[ext_resource type="Script" uid="uid://caosiototq6iy" path="res://scripts/terrain/terrain_collider.gd" id="1_twk8p"]
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_kc868"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_3umlm"]
+size = Vector2(8, 8)
+subdivide_width = 7
+subdivide_depth = 7
+
+[node name="Node3D" type="CollisionShape3D"]
+shape = SubResource("ConcavePolygonShape3D_kc868")
+debug_color = Color(0.7, 0, 0.0116665, 0.709804)
+script = ExtResource("1_twk8p")
+template_mesh = SubResource("PlaneMesh_3umlm")
