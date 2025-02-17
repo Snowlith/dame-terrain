@@ -21,4 +21,5 @@ func handle(delta: float):
 
 func exit():
 	if landing_sound:
+		return
 		Audio.play_sound(landing_sound)

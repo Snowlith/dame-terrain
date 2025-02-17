@@ -4,7 +4,6 @@ shader_type spatial;
 render_mode diffuse_lambert, specular_toon;
 
 group_uniforms settings;
-uniform float amplitude = 50.0;
 uniform float partition_size = 16.0;
 uniform float partition_lod_step = 1.0;
 uniform int partition_lod_zero_radius = 1;
@@ -31,6 +30,7 @@ uniform float sand_specular: hint_range(0, 1) = 0;
 uniform float sand_uv_scale = 1.0;
 
 group_uniforms externally_assigned;
+uniform float amplitude = 1.0;
 uniform vec3 terrain_position;
 uniform sampler2D height_map: hint_default_white;
 uniform vec2 height_map_offset = vec2(0.5);

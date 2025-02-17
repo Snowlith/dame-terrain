@@ -1,7 +1,7 @@
 extends Component
 class_name FootstepProfile
 
-@export var footstep_profile : AudioStreamRandomizer
+@export var audio_stream: AudioStream
 
-func get_audio_stream():
-	return footstep_profile
+func get_audio_stream(footstep_player: FootstepManager):
+	return audio_stream

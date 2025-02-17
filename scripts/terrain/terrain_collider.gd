@@ -15,6 +15,8 @@ func _ready():
 	update_shape()
 	
 func _physics_process(delta):
+	if not physics_body:
+		return
 	var rounded_body_position = physics_body.global_position.snapped(snap) * Vector3(1,0,1)
 	if not global_position == rounded_body_position:
 		global_position = rounded_body_position

@@ -16,7 +16,7 @@
 [ext_resource type="AudioStream" uid="uid://c7h4uvjoo0ely" path="res://assets/audio/footsteps/dirt/footstep_dirt-04.ogg" id="11_fulsm"]
 [ext_resource type="AudioStream" uid="uid://br82llud7e4qb" path="res://assets/audio/footsteps/dirt/footstep_dirt-01.ogg" id="11_oprun"]
 [ext_resource type="AudioStream" uid="uid://dxe6p2fo1we4k" path="res://assets/audio/footsteps/dirt/footstep_dirt-02.ogg" id="12_a8ls1"]
-[ext_resource type="Script" uid="uid://dhoyglncwng6x" path="res://scripts/footstep_manager/footstep_player.gd" id="13_jej6c"]
+[ext_resource type="Script" uid="uid://dhoyglncwng6x" path="res://scripts/footstep_manager/footstep_manager.gd" id="13_jej6c"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_3v2ag"]
 radius = 0.4
