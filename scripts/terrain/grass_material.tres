@@ -1,0 +1,38 @@
+[gd_resource type="ShaderMaterial" load_steps=8 format=3 uid="uid://c3jy0vomll0v"]
+
+[ext_resource type="Shader" uid="uid://tfykr38j1sqs" path="res://scripts/terrain/grass.gdshader" id="1_l4mgc"]
+[ext_resource type="Texture2D" uid="uid://cjqnsuf1jy8s7" path="res://assets/textures/Spherical 4 - 512x512.png" id="2_n4jrj"]
+[ext_resource type="Texture2D" uid="uid://b3wno2fi4275s" path="res://assets/textures/test_normal.png" id="3_n4jrj"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ldala"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_yfnew"]
+noise = SubResource("FastNoiseLite_ldala")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_88771"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ck1mm"]
+noise = SubResource("FastNoiseLite_88771")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_l4mgc")
+shader_parameter/specular = 1.0
+shader_parameter/roughness = 0.72
+shader_parameter/metallic = 0.0
+shader_parameter/fadeout_envelope = Vector2(0, 0)
+shader_parameter/top_color = Color(0.99, 0, 0, 1)
+shader_parameter/bottom_color = Color(0, 0, 0, 1)
+shader_parameter/noise_color = Color(0, 0, 0, 1)
+shader_parameter/foliage_texture = ExtResource("2_n4jrj")
+shader_parameter/heightmap_normals = ExtResource("3_n4jrj")
+shader_parameter/heightmap_scale = 0.0
+shader_parameter/color_noise = SubResource("NoiseTexture2D_yfnew")
+shader_parameter/color_noise_scale = 0.0
+shader_parameter/color_noise_intensity = 0.0
+shader_parameter/wind = true
+shader_parameter/wind_noise = SubResource("NoiseTexture2D_ck1mm")
+shader_parameter/wind_scale = 1.0
+shader_parameter/wind_intensity = 1.0
+shader_parameter/wind_speed = 1.0
+shader_parameter/wind_darken = 0.0

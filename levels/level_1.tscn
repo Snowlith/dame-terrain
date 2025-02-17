@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://hwx74532ddw5"]
+[gd_scene load_steps=30 format=3 uid="uid://hwx74532ddw5"]
 
 [ext_resource type="Texture2D" uid="uid://c1tbvgldy1vuk" path="res://assets/skies/rogland_clear_night_4k.exr" id="1_kx6l7"]
 [ext_resource type="PackedScene" uid="uid://c0c4at6dndxd6" path="res://scenes/player.tscn" id="2_jirdo"]
@@ -12,6 +12,7 @@
 [ext_resource type="AudioStream" uid="uid://bdct8miu1fqlv" path="res://assets/audio/footsteps/grass/footstep_Grass-02.ogg" id="8_aerfg"]
 [ext_resource type="Texture2D" uid="uid://b3wno2fi4275s" path="res://assets/textures/test_normal.png" id="8_betor"]
 [ext_resource type="AudioStream" uid="uid://c0m1w5vv8r43j" path="res://assets/audio/footsteps/grass/footstep_Grass-03.ogg" id="9_nmsli"]
+[ext_resource type="ArrayMesh" uid="uid://1aoftkegamr" path="res://assets/models/grass.tres" id="9_vjtdm"]
 [ext_resource type="AudioStream" uid="uid://cmy315y7l1nhf" path="res://assets/audio/footsteps/grass/footstep_Grass-04.ogg" id="10_betor"]
 [ext_resource type="Shader" uid="uid://tfpdput3mdmm" path="res://scripts/terrain/foliage.gdshader" id="12_betor"]
 
@@ -52,23 +53,36 @@ fractal_ping_pong_strength = 2.245
 generate_mipmaps = false
 noise = SubResource("FastNoiseLite_aerfg")
 
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_vjtdm"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_bgw3c"]
+noise = SubResource("FastNoiseLite_vjtdm")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_lrvbd"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_oqlok"]
+noise = SubResource("FastNoiseLite_lrvbd")
+
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_nmsli"]
 fractal_type = 3
-fractal_octaves = 1
+fractal_octaves = 2
+fractal_lacunarity = 2.14
+fractal_gain = 0.215
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_betor"]
 noise = SubResource("FastNoiseLite_nmsli")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bgw3c"]
 shader = ExtResource("12_betor")
-shader_parameter/instance_rows = 50
-shader_parameter/instance_spacing = 2.25
-shader_parameter/density_adjust = 1.34
+shader_parameter/instance_rows = 250
+shader_parameter/instance_spacing = 0.325
+shader_parameter/density_adjust = 1.23
 shader_parameter/orient_to_normal = true
 shader_parameter/orient_up_with_normal = false
 shader_parameter/random_spacing = 1.96
-shader_parameter/min_scale = Vector3(0.43, 0.29, 0.04)
-shader_parameter/max_scale = Vector3(1, 1, 1)
+shader_parameter/min_scale = Vector3(0.05, 0.05, 0.05)
+shader_parameter/max_scale = Vector3(0.75, 0.75, 0.75)
+shader_parameter/max_spawn_steepness = 0.48
 shader_parameter/height_map_offset = Vector2(0.5, 0.5)
 shader_parameter/steepness_map_offset = Vector2(0.5, 0.5)
 shader_parameter/normal_map = ExtResource("8_betor")
@@ -76,13 +90,6 @@ shader_parameter/normal_map_offset = Vector2(0.5, 0.5)
 shader_parameter/density_map = SubResource("NoiseTexture2D_betor")
 shader_parameter/density_map_offset = Vector2(0.5, 0.5)
 shader_parameter/amplitude = 50.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vjtdm"]
-albedo_color = Color(0.49578, 0.668275, 0.164292, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_lrvbd"]
-material = SubResource("StandardMaterial3D_vjtdm")
-size = Vector3(0.135, 1.175, 0.465)
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vjtdm"]
 streams_count = 4
@@ -103,13 +110,14 @@ environment = SubResource("Environment_n46q3")
 script = ExtResource("2_n46q3")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="Lights"]
-transform = Transform3D(-0.25949, -0.756981, 0.599704, -0.780999, 0.529757, 0.330754, -0.568072, -0.38254, -0.728668, 0, 0, 0)
+transform = Transform3D(-0.980271, -0.0822809, 0.179717, 0, 0.909236, 0.416281, -0.197657, 0.408068, -0.891298, 0, 0, 0)
 light_color = Color(0.897412, 0.775423, 0.152425, 1)
 light_energy = 1.276
 shadow_enabled = true
 shadow_opacity = 0.69
-shadow_blur = 1.479
+shadow_blur = 1.334
 directional_shadow_blend_splits = true
+directional_shadow_max_distance = 154.5
 
 [node name="Terrain" type="StaticBody3D" parent="."]
 physics_interpolation_mode = 2
@@ -119,6 +127,8 @@ script = ExtResource("3_kx6l7")
 script = ExtResource("4_btoec")
 noise_texture = SubResource("NoiseTexture2D_nmsli")
 falloff_texture = ExtResource("5_aerfg")
+grass_edge_noise = SubResource("NoiseTexture2D_bgw3c")
+sand_edge_noise = SubResource("NoiseTexture2D_oqlok")
 player_character = NodePath("../../Player")
 partition_container = NodePath("../FollowPlayerNode")
 physics_bodies = [NodePath("../../Player")]
@@ -126,12 +136,10 @@ foliage_particles = [NodePath("../FollowPlayerNode/Grass")]
 partition_material = ExtResource("5_gwceb")
 
 [node name="Sprite2D" type="Sprite2D" parent="Terrain/TerrainGenerator"]
-visible = false
 scale = Vector2(0.3, 0.3)
 centered = false
 
 [node name="Sprite2D2" type="Sprite2D" parent="Terrain/TerrainGenerator"]
-visible = false
 position = Vector2(166, 3)
 scale = Vector2(0.3, 0.3)
 centered = false
@@ -139,20 +147,22 @@ centered = false
 [node name="FollowPlayerNode" type="Node3D" parent="Terrain"]
 
 [node name="Grass" type="GPUParticles3D" parent="Terrain/FollowPlayerNode"]
+visible = false
+cast_shadow = 0
 extra_cull_margin = 64.0
-amount = 2500
+amount = 62500
 lifetime = 0.01
 explosiveness = 1.0
 interpolate = false
 process_material = SubResource("ShaderMaterial_bgw3c")
-draw_pass_1 = SubResource("BoxMesh_lrvbd")
+draw_pass_1 = ExtResource("9_vjtdm")
 
 [node name="FootstepProfile" type="Node" parent="Terrain"]
 script = ExtResource("6_gwceb")
 footstep_profile = SubResource("AudioStreamRandomizer_vjtdm")
 
 [node name="Player" parent="." instance=ExtResource("2_jirdo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 70.9074, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.46, 103.142, 0)
 
 [node name="CameraPivot" type="RemoteTransform3D" parent="Player"]
 transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 0, 18.2642, 18.9315)
@@ -162,9 +172,10 @@ update_scale = false
 [node name="SubViewport" type="SubViewport" parent="."]
 
 [node name="Camera3D" type="Camera3D" parent="SubViewport"]
-transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 0, 89.1716, 18.9315)
+transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 15.46, 121.406, 18.9315)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+visible = false
 position = Vector2(199, 195)
 scale = Vector2(0.755859, 0.734375)
 texture = SubResource("ViewportTexture_vjtdm")

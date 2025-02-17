@@ -13,6 +13,9 @@ uniform float random_spacing;
 uniform vec3 min_scale = vec3(1.0);
 uniform vec3 max_scale = vec3(1.0);
 
+group_uniforms steepness_definition;
+uniform float max_spawn_steepness : hint_range(0, 1.0) = 0.85;
+
 group_uniforms externally_assigned;
 uniform sampler2D height_map: hint_default_white;
 uniform vec2 height_map_offset = vec2(0.5);
@@ -26,8 +29,8 @@ uniform float amplitude = 50.0;
 
 render_mode disable_velocity, disable_force;
 
-vec3 unpack_normal(vec4 rgba) {
-	vec3 n = rgba.xzy * 2.0 - vec3(1.0);
+vec3 unpack_normal(vec3 rgb) {
+	vec3 n = rgb.xzy * 2.0 - vec3(1.0);
 	n.z *= -1.0;
 	return normalize(n);
 }
@@ -71,10 +74,22 @@ vec3 get_normal(vec3 world_vertex){
 
 	// Bounds
 	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return vec3(0, 1, 0);
+		return vec3(0, 0, 1);
 	}
 
-	return texture(normal_map, texture_position + normal_map_offset).rgb;
+	return unpack_normal(texture(normal_map, texture_position + normal_map_offset).rgb);
+}
+
+float get_steepness(vec3 world_vertex){
+	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(height_map,0).x);
+
+	// Bounds
+	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
+		return 0.0;
+	}
+	
+	float steepness_value = texture(steepness_map, texture_position + steepness_map_offset).r;
+	return steepness_value;
 }
 
 void start() {
@@ -112,8 +127,10 @@ void start() {
 	pos.y = get_height(pos);
 	
 	// hash the density using the density texture
+	
+	float steepness = get_steepness(pos);
 	float density = get_density(pos);
-	if (density * density_adjust > r.x) {
+	if (steepness > max_spawn_steepness || density * density_adjust > r.x) {
 		pos.y = -10000.0;
 	}
 	
