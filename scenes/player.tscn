@@ -46,6 +46,7 @@ stream_1/stream = ExtResource("12_a8ls1")
 
 [node name="Player" type="CharacterBody3D"]
 physics_interpolation_mode = 1
+floor_max_angle = 1.0472
 script = ExtResource("1_tuyoq")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]

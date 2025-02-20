@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3 uid="uid://ba2pacdu8ruin"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_vjtdm"]
+viewport_path = NodePath("MiniMapTest/SubViewport")
+
+[node name="MiniMapTest" type="Node"]
+
+[node name="SubViewport" type="SubViewport" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.821448, 0.570284, 0, -0.570284, 0.821448, 13.8838, 82.7584, -17.3764)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(136, 295)
+scale = Vector2(0.485351, 0.507813)
+texture = SubResource("ViewportTexture_vjtdm")

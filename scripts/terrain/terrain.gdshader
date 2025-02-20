@@ -5,7 +5,7 @@ render_mode diffuse_lambert, specular_toon;
 
 group_uniforms settings;
 uniform float partition_size = 16.0;
-uniform float partition_lod_step = 1.0;
+uniform int partition_lod_step = 1;
 uniform int partition_lod_zero_radius = 1;
 uniform float normal_sampling_distance = 4.0;
 uniform float normal_sampling_lod = 1.0;
@@ -76,20 +76,6 @@ float get_height_lod(vec3 world_vertex){
 	return height_value * amplitude;
 }
 
-//float get_steepness(vec3 world_vertex){
-	//vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(height_map,0).x);
-//
-	//// Bounds
-	//if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		//return 0.0;
-	//}
-	//
-	//float steepness_value = textureLod(steepness_map, texture_position + steepness_map_offset, steepness_sampling_lod).r;
-	//float edge_noise_value = mix(1.0, texture(steepness_edge_noise, texture_position).r, steepness_edge_noise_intensity);
-	//return steepness_value * edge_noise_value;
-//}
-
-
 vec3 get_biome(vec3 world_vertex){
 	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(biome_map,0).x);
 
@@ -102,13 +88,32 @@ vec3 get_biome(vec3 world_vertex){
 }
 
 vec3 calculate_normal(vec3 vertex, float adjacent_distance) {
+	//float height = get_height_lod(vertex);
 	float left = get_height_lod(vertex + vec3(-adjacent_distance, 0, 0));
 	float right = get_height_lod(vertex + vec3(adjacent_distance, 0, 0));
 	float up = get_height_lod(vertex + vec3(0, 0, -adjacent_distance));
 	float down = get_height_lod(vertex + vec3(0, 0, adjacent_distance));
-
+	
+	//float dx = height - right;
+	//float dy = height - down;
+	//
+	//return normalize(vec3(dx, adjacent_distance, dy));
 	return normalize(vec3(left - right, 2.0 * adjacent_distance, up - down));
 }
+
+//vec3 get_normal(vec2 pos) {
+	//vec2 pixel_size = 1.0 / vec2(textureSize(noise_map, 0));
+	//
+	//float height = get_height(pos);
+	//float right = get_height(vec2(min(1.0, pos.x + pixel_size.x), pos.y));
+	//float up = get_height(vec2(pos.x, min(1.0, pos.y + pixel_size.y)));
+	//
+	//float dx = abs(right - height) * amplitude;
+	//float dy = abs(up - height) * amplitude;
+	//
+	//vec3 normal = normalize(vec3(-dx, -dy, 1.0));
+	//return (normal + vec3(1.0)) * 0.5;
+//}
 
 vec3 to_normal_map(vec3 n){
 	n *= vec3(1.0, 1.0, -1.0);
@@ -122,8 +127,7 @@ vec3 rnm_blend(vec3 base_normal, vec3 detail_normal){
 	base_normal = base_normal * 2.0 + vec3(-1, -1, 0);
 	detail_normal = detail_normal * vec3(-2, -2, 2) + vec3(1, 1, -1);
 	vec3 r = base_normal * dot(base_normal, detail_normal) / base_normal.z - detail_normal;
-	r = normalize(r);
-	return r * 0.5 + 0.5;
+	return normalize(r) * 0.5 + 0.5;
 }
 
 void fragment() {
@@ -136,11 +140,13 @@ void fragment() {
 	vec4 projected_coords = INV_VIEW_MATRIX * vec4(VERTEX, 1.0);
 	vec3 world_normal = abs(INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	vec3 normal_weights = abs(world_normal) / (abs(world_normal.x) + abs(world_normal.y) + abs(world_normal.z));
+	
+	vec3 biome = get_biome(vert);
 
 	vec3 tp_grass_albedo = get_triplanarized_map(grass_albedo, projected_coords, normal_weights, grass_uv_scale * 0.01);
 	vec3 tp_grass_normal = get_triplanarized_map(grass_normal, projected_coords, normal_weights, grass_uv_scale * 0.01);
 	vec3 tp_grass_arm = get_triplanarized_map(grass_arm, projected_coords, normal_weights, grass_uv_scale * 0.01);
-	
+		
 	vec3 tp_cliff_albedo = get_triplanarized_map(cliff_albedo, projected_coords, normal_weights, cliff_uv_scale * 0.01);
 	vec3 tp_cliff_normal = get_triplanarized_map(cliff_normal, projected_coords, normal_weights, cliff_uv_scale * 0.01);
 	vec3 tp_cliff_arm = get_triplanarized_map(cliff_arm, projected_coords, normal_weights, cliff_uv_scale * 0.01);
@@ -149,10 +155,8 @@ void fragment() {
 	vec3 tp_sand_normal = get_triplanarized_map(sand_normal, projected_coords, normal_weights, sand_uv_scale * 0.01);
 	vec3 tp_sand_arm = get_triplanarized_map(sand_arm, projected_coords, normal_weights, sand_uv_scale * 0.01);
 	
-	vec3 biome = get_biome(vert);
-	
 	ALBEDO = tp_grass_albedo * biome.r + tp_cliff_albedo * biome.g + tp_sand_albedo * biome.b;
-	
+	//ALBEDO = biome;
 	vec3 base_normal = to_normal_map(normal);
 	NORMAL_MAP = rnm_blend(base_normal, tp_grass_normal * biome.r + tp_cliff_normal * biome.g + tp_sand_normal * biome.b);
 	
@@ -173,9 +177,17 @@ void vertex(){
 		abs(true_round((terrain_vertex.x - terrain_position.x) / partition_size)),
 		abs(true_round((terrain_vertex.z - terrain_position.z) / partition_size))
 	);
-	float lod = true_round(max(abs(terrain_vertex.x), abs(terrain_vertex.z))/partition_size) * partition_lod_step;
-	lod = max(0.0, lod - float(partition_lod_zero_radius));
 	
+	//vec2 partition_distance = vec2(
+		//abs(round(terrain_vertex.x / partition_size)),
+		//abs(round(terrain_vertex.z / partition_size))
+	//);
+	
+	float lod = true_round(max(abs(terrain_vertex.x), abs(terrain_vertex.z))/partition_size) * float(partition_lod_step);
+	lod = max(0.0, lod - float(partition_lod_zero_radius * partition_lod_step));
+	
+	//float lod = max(partition_distance.x, partition_distance.y) * partition_lod_step;
+	//
 	float subdivision_size = min(pow(2, lod), partition_size);
 
 	vec3 fraction = fract((VERTEX + partition_size / 2.0) / subdivision_size);
@@ -200,5 +212,23 @@ void vertex(){
 			fraction.z
 		);
 	}
+	//vec2 fracXZ = fract((VERTEX.xz + partition_size / 2.0) / subdivision_size);
+//
+//// Original bilinear interpolation logic (without conditionals)
+	//float heightX = mix(
+	    //get_height(world_vertex - vec3(fracXZ.x * subdivision_size, 0, 0)),
+	    //get_height(world_vertex + vec3((1.0 - fracXZ.x) * subdivision_size, 0, 0)),
+	    //fracXZ.x
+	//);
+//
+	//float heightZ = mix(
+	    //get_height(world_vertex - vec3(0, 0, fracXZ.y * subdivision_size)),
+	    //get_height(world_vertex + vec3(0, 0, (1.0 - fracXZ.y) * subdivision_size)),
+	    //fracXZ.y
+	//);
+//
+//// Blend between X/Z interpolations based on position relative to center
+	//float blend = smoothstep(0.45, 0.55, fracXZ.y); // Smoother transition
+	//VERTEX.y = mix(heightX, heightZ, blend);
 	vert = world_vertex;
 }

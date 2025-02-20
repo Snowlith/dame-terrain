@@ -18,14 +18,13 @@ const PARTITION = preload("res://scripts/terrain/terrain_partition.tscn")
 const PROCESSOR = preload("res://scripts/terrain/terrain_processor.tscn")
 
 @onready var static_body: StaticBody3D = get_parent_entity().get_physics_body()
-
-@onready var amplitude: float = terrain_processing_material.get_shader_parameter("amplitude")
-@onready var partition_size: float = partition_material.get_shader_parameter("partition_size")
-@onready var partition_lod_step: float = partition_material.get_shader_parameter("partition_lod_step")
-@onready var partition_lod_zero_radius: float = partition_material.get_shader_parameter("partition_lod_zero_radius")
-
 @onready var sprite_2d = $Sprite2D
 @onready var sprite_2d_2 = $Sprite2D2
+
+var amplitude: float
+var partition_size: float
+var partition_lod_step: float
+var partition_lod_zero_radius: int
 
 signal maps_calculated
 # TODO: connect to this signal in grass 
@@ -54,14 +53,20 @@ func _physics_process(delta):
 
 func generate_terrain():
 	print("[TerrainGenerator] Generating...")
+	get_shader_uniforms()
 	await generate_maps()
 	generate_partitions()
 	if Engine.is_editor_hint():
 		return
 	generate_colliders()
 
-func generate_maps():
+func get_shader_uniforms():
 	amplitude = terrain_processing_material.get_shader_parameter("amplitude")
+	partition_size = partition_material.get_shader_parameter("partition_size")
+	partition_lod_step = partition_material.get_shader_parameter("partition_lod_step")
+	partition_lod_zero_radius = partition_material.get_shader_parameter("partition_lod_zero_radius")
+
+func generate_maps():
 	var terrain_processor = PROCESSOR.instantiate()
 	add_child(terrain_processor)
 	terrain_processor.set_terrain_processing_material(terrain_processing_material)

@@ -16,7 +16,7 @@ func get_audio_stream(footstep_manager: FootstepManager):
 	var entity: Entity = footstep_manager.get_parent_entity()
 	if not entity:
 		return
-	var biome = get_biome(entity.global_position)
+	var biome: Color = get_biome(entity.global_position)
 	
 	if is_zero_approx(biome.r + biome.g + biome.b):
 		return audio_stream
@@ -30,7 +30,7 @@ func get_audio_stream(footstep_manager: FootstepManager):
 func get_biome(pos: Vector3):
 	var image_size = biome_image.get_size().x
 	if abs(pos.x) > 0.5 * image_size or abs(pos.z) > 0.5 * image_size:
-		return 0.0
+		return Color(0, 0, 1)
 	var pixel_x = int(pos.x + 0.5 * image_size)
 	var pixel_z = int(pos.z + 0.5 * image_size)
 	return biome_image.get_pixel(pixel_x, pixel_z)

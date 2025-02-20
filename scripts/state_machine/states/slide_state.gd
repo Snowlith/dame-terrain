@@ -5,10 +5,10 @@ class_name SlideState
 @export var acceleration: float = 5
 @export var friction: float = 3
 
-@export var velocity_cutoff: float = 5
+@export var velocity_cutoff: float = 6.5
 
 @export var slope_downward_acceleration: float = 60
-@export var slope_minimum_angle: float = 15
+@export var slope_minimum_angle: float = 25
 
 @export var cam_bob: CameraBobManager
 @export var cam_crouch: CameraCrouchManager
@@ -37,15 +37,21 @@ func _enter_slope(velocity):
 	if velocity.y > 0:
 		return
 	if not _cb.get_floor_angle() > deg_to_rad(slope_minimum_angle):
-		#print("too shallow")
 		return
 
 	var projected_velocity = velocity.slide(_cb.get_floor_normal())
 	
-	# Redirect the player's velocity along the slope
-	_cb.velocity.x = _cb.velocity.x if abs(_cb.velocity.x) > abs(projected_velocity.x) else projected_velocity.x
-	_cb.velocity.z = _cb.velocity.z if abs(_cb.velocity.z) > abs(projected_velocity.z) else projected_velocity.z
-	# Ensure the player retains any downward momentum, but don't allow upward velocity
+	var player_xz = _cb.velocity * Vector3(1, 0, 1)
+	var projected_xz = projected_velocity * Vector3(1, 0, 1)
+	
+	if projected_xz.length_squared() > player_xz.length_squared():
+		_cb.velocity.x = projected_velocity.x
+		_cb.velocity.z = projected_velocity.z
+	
+	# If player is going faster, don't limit, if going slower, go to projected velocity
+	#_cb.velocity.x = _cb.velocity.x if abs(_cb.velocity.x) > abs(projected_velocity.x) else projected_velocity.x
+	#_cb.velocity.z = _cb.velocity.z if abs(_cb.velocity.z) > abs(projected_velocity.z) else projected_velocity.z
+	
 	_cb.velocity.y = min(_cb.velocity.y, projected_velocity.y)
 
 func update_status(delta: float) -> Status:

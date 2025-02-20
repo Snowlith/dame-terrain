@@ -7,8 +7,6 @@ class_name WalkState
 
 @export var rigid_body_push_force: float = 2
 
-@export var footstep_manager: FootstepManager
-
 func update_status(_delta: float) -> Status:
 	if _cb.is_on_floor():
 		return Status.ACTIVE

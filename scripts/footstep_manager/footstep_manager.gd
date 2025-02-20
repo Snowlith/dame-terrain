@@ -3,7 +3,7 @@ class_name FootstepManager
 
 @onready var character_body: CharacterBody3D = get_parent_entity().get_physics_body()
 
-@export var frequency: float = 3.14
+@export var frequency: float = 3.14159
 
 @onready var audio_stream_player: AudioStreamPlayer3D = $AudioStreamPlayer3D
 @onready var ray_cast: RayCast3D = $RayCast3D
