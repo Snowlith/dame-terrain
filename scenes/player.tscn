@@ -82,41 +82,41 @@ script = ExtResource("3_ur7pv")
 stand_collider = NodePath("../../StandCollider")
 crouch_collider = NodePath("../../CrouchCollider")
 shape_cast = NodePath("../../CrouchCollider/ShapeCast3D")
-metadata/_custom_type_script = ExtResource("3_ur7pv")
+metadata/_custom_type_script = "uid://bwd31vcu4wejo"
 
 [node name="CameraBobManager" type="Node" parent="CameraManager"]
 script = ExtResource("4_y4r1p")
-metadata/_custom_type_script = ExtResource("4_y4r1p")
+metadata/_custom_type_script = "uid://jt4xqxesyhs7"
 
 [node name="StateMachine" type="Node" parent="."]
 script = ExtResource("3_smehm")
-metadata/_custom_type_script = ExtResource("3_smehm")
+metadata/_custom_type_script = "uid://safgitx4odkc"
 
 [node name="WalkState" type="Node" parent="StateMachine"]
 script = ExtResource("4_ur7pv")
-metadata/_custom_type_script = ExtResource("4_ur7pv")
+metadata/_custom_type_script = "uid://d4h8xp2p5kkx2"
 
 [node name="CrouchState" type="Node" parent="StateMachine" node_paths=PackedStringArray("cam_crouch")]
 script = ExtResource("6_d2wvv")
 cam_crouch = NodePath("../../CameraManager/CameraCrouchManager")
-metadata/_custom_type_script = ExtResource("6_d2wvv")
+metadata/_custom_type_script = "uid://dnabnlo5vab8v"
 
 [node name="SlideState" type="Node" parent="StateMachine" node_paths=PackedStringArray("cam_bob", "cam_crouch")]
 script = ExtResource("8_3v2ag")
 cam_bob = NodePath("../../CameraManager/CameraBobManager")
 cam_crouch = NodePath("../../CameraManager/CameraCrouchManager")
-metadata/_custom_type_script = ExtResource("8_3v2ag")
+metadata/_custom_type_script = "uid://b3ch426lm62p4"
 
 [node name="AirState" type="Node" parent="StateMachine"]
 script = ExtResource("5_y4r1p")
 landing_sound = SubResource("AudioStreamRandomizer_4r5pv")
-metadata/_custom_type_script = ExtResource("5_y4r1p")
+metadata/_custom_type_script = "uid://c81qvhbndw00l"
 
 [node name="JumpState" type="Node" parent="StateMachine"]
 script = ExtResource("5_fjrip")
 allow_bunnyhop = true
 jump_sound = SubResource("AudioStreamRandomizer_qfm1y")
-metadata/_custom_type_script = ExtResource("5_fjrip")
+metadata/_custom_type_script = "uid://y5ucxy6sm8pe"
 
 [node name="PanelContainer" type="PanelContainer" parent="StateMachine"]
 visible = false

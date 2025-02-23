@@ -79,6 +79,7 @@ func generate_maps():
 	height_image.generate_mipmaps(true)
 	steepness_image.generate_mipmaps(true)
 	biome_image.generate_mipmaps(true)
+	normal_image.generate_mipmaps(true)
 	
 	height_texture = ImageTexture.create_from_image(height_image)
 	steepness_texture = ImageTexture.create_from_image(steepness_image)
@@ -90,6 +91,7 @@ func generate_maps():
 	
 	partition_material.set_shader_parameter("amplitude", amplitude)
 	partition_material.set_shader_parameter("height_map", height_texture)
+	partition_material.set_shader_parameter("normal_map", normal_texture)
 	partition_material.set_shader_parameter("biome_map", biome_texture)
 	
 	for gpu_particles: GPUParticles3D in foliage_particles:

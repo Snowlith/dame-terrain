@@ -1,8 +1,8 @@
 @tool
 extends Node2D
 
-@onready var sub_viewport = $SubViewport
-@onready var color_rect = $SubViewport/ColorRect
+@onready var sub_viewport: SubViewport = $SubViewport
+@onready var color_rect: ColorRect = $SubViewport/ColorRect
 
 func set_terrain_processing_material(mat: ShaderMaterial):
 	color_rect.material = mat

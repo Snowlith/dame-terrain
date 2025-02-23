@@ -31,9 +31,9 @@ window/size/viewport_height=1000
 [file_customization]
 
 folder_colors={
-"res://assets/textures/cliff/": "orange",
-"res://assets/textures/grass/": "green",
-"res://assets/textures/sand/": "yellow",
+"res://assets/textures/terrain/cliff/": "orange",
+"res://assets/textures/terrain/grass/": "green",
+"res://assets/textures/terrain/sand/": "yellow",
 "res://levels/": "green"
 }
 

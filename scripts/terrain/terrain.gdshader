@@ -1,13 +1,12 @@
 shader_type spatial;
 
 //render_mode wireframe;
-render_mode diffuse_lambert, specular_toon;
+//render_mode diffuse_lambert, specular_toon;
 
 group_uniforms settings;
 uniform float partition_size = 16.0;
 uniform int partition_lod_step = 1;
 uniform int partition_lod_zero_radius = 1;
-uniform float normal_sampling_distance = 4.0;
 uniform float normal_sampling_lod = 1.0;
 
 group_uniforms textures;
@@ -32,8 +31,13 @@ uniform float sand_uv_scale = 1.0;
 group_uniforms externally_assigned;
 uniform float amplitude = 1.0;
 uniform vec3 terrain_position;
+
 uniform sampler2D height_map: hint_default_white;
 uniform vec2 height_map_offset = vec2(0.5);
+
+uniform sampler2D normal_map: hint_normal;
+uniform vec2 normal_map_offset = vec2(0.5);
+
 uniform sampler2D biome_map: hint_default_black;
 uniform vec2 biome_map_offset = vec2(0.5);
 
@@ -64,18 +68,6 @@ float get_height(vec3 world_vertex){
 	return height_value * amplitude;
 }
 
-float get_height_lod(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(height_map,0).x);
-
-	// Bounds
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return 0.0;
-	}
-
-	float height_value = textureLod(height_map, texture_position + height_map_offset, normal_sampling_lod).r;
-	return height_value * amplitude;
-}
-
 vec3 get_biome(vec3 world_vertex){
 	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(biome_map,0).x);
 
@@ -87,33 +79,27 @@ vec3 get_biome(vec3 world_vertex){
 	return texture(biome_map, texture_position + biome_map_offset).rgb;
 }
 
-vec3 calculate_normal(vec3 vertex, float adjacent_distance) {
-	//float height = get_height_lod(vertex);
-	float left = get_height_lod(vertex + vec3(-adjacent_distance, 0, 0));
-	float right = get_height_lod(vertex + vec3(adjacent_distance, 0, 0));
-	float up = get_height_lod(vertex + vec3(0, 0, -adjacent_distance));
-	float down = get_height_lod(vertex + vec3(0, 0, adjacent_distance));
+vec3 get_normal(vec3 world_vertex){
+	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(normal_map,0).x);
+
+	// if out of bounds, use sand
+	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
+		return vec3(0, 0, 1);
+	}
 	
-	//float dx = height - right;
-	//float dy = height - down;
-	//
-	//return normalize(vec3(dx, adjacent_distance, dy));
-	return normalize(vec3(left - right, 2.0 * adjacent_distance, up - down));
+	return texture(normal_map, texture_position + normal_map_offset).rgb;
 }
 
-//vec3 get_normal(vec2 pos) {
-	//vec2 pixel_size = 1.0 / vec2(textureSize(noise_map, 0));
-	//
-	//float height = get_height(pos);
-	//float right = get_height(vec2(min(1.0, pos.x + pixel_size.x), pos.y));
-	//float up = get_height(vec2(pos.x, min(1.0, pos.y + pixel_size.y)));
-	//
-	//float dx = abs(right - height) * amplitude;
-	//float dy = abs(up - height) * amplitude;
-	//
-	//vec3 normal = normalize(vec3(-dx, -dy, 1.0));
-	//return (normal + vec3(1.0)) * 0.5;
-//}
+vec3 get_normal_lod(vec3 world_vertex){
+	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(normal_map,0).x);
+
+	// if out of bounds, use sand
+	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
+		return vec3(0, 0, 1);
+	}
+	
+	return textureLod(normal_map, texture_position + normal_map_offset, normal_sampling_lod).rgb;
+}
 
 vec3 to_normal_map(vec3 n){
 	n *= vec3(1.0, 1.0, -1.0);
@@ -122,51 +108,20 @@ vec3 to_normal_map(vec3 n){
 	return n;
 }
 
+vec3 unpack_normal_map(vec3 rgb) {
+	vec3 n = rgb.xzy * 2.0 - vec3(1.0);
+	n.z *= -1.0;
+	return n;
+}
+
 // reoriented normal mapping
 vec3 rnm_blend(vec3 base_normal, vec3 detail_normal){
 	base_normal = base_normal * 2.0 + vec3(-1, -1, 0);
-	detail_normal = detail_normal * vec3(-2, -2, 2) + vec3(1, 1, -1);
+	detail_normal = detail_normal * vec3(-2, -2, 2) - vec3(1, 1, -1);
 	vec3 r = base_normal * dot(base_normal, detail_normal) / base_normal.z - detail_normal;
 	return normalize(r) * 0.5 + 0.5;
 }
 
-void fragment() {
-	// Normal calculations
-	vec3 interpolated_vert = vert;
-	interpolated_vert.y = get_height(vert);
-	vec3 normal = calculate_normal(interpolated_vert, normal_sampling_distance);
-
-	// Albedo calculations
-	vec4 projected_coords = INV_VIEW_MATRIX * vec4(VERTEX, 1.0);
-	vec3 world_normal = abs(INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
-	vec3 normal_weights = abs(world_normal) / (abs(world_normal.x) + abs(world_normal.y) + abs(world_normal.z));
-	
-	vec3 biome = get_biome(vert);
-
-	vec3 tp_grass_albedo = get_triplanarized_map(grass_albedo, projected_coords, normal_weights, grass_uv_scale * 0.01);
-	vec3 tp_grass_normal = get_triplanarized_map(grass_normal, projected_coords, normal_weights, grass_uv_scale * 0.01);
-	vec3 tp_grass_arm = get_triplanarized_map(grass_arm, projected_coords, normal_weights, grass_uv_scale * 0.01);
-		
-	vec3 tp_cliff_albedo = get_triplanarized_map(cliff_albedo, projected_coords, normal_weights, cliff_uv_scale * 0.01);
-	vec3 tp_cliff_normal = get_triplanarized_map(cliff_normal, projected_coords, normal_weights, cliff_uv_scale * 0.01);
-	vec3 tp_cliff_arm = get_triplanarized_map(cliff_arm, projected_coords, normal_weights, cliff_uv_scale * 0.01);
-	
-	vec3 tp_sand_albedo = get_triplanarized_map(sand_albedo, projected_coords, normal_weights, sand_uv_scale * 0.01);
-	vec3 tp_sand_normal = get_triplanarized_map(sand_normal, projected_coords, normal_weights, sand_uv_scale * 0.01);
-	vec3 tp_sand_arm = get_triplanarized_map(sand_arm, projected_coords, normal_weights, sand_uv_scale * 0.01);
-	
-	ALBEDO = tp_grass_albedo * biome.r + tp_cliff_albedo * biome.g + tp_sand_albedo * biome.b;
-	//ALBEDO = biome;
-	vec3 base_normal = to_normal_map(normal);
-	NORMAL_MAP = rnm_blend(base_normal, tp_grass_normal * biome.r + tp_cliff_normal * biome.g + tp_sand_normal * biome.b);
-	
-	// ARM: AO, ROUGHNESS, METALLIC
-	AO = tp_grass_arm.r * biome.r + tp_cliff_arm.r * biome.g + tp_sand_arm.r * biome.b;
-	ROUGHNESS = tp_grass_arm.g * biome.r + tp_cliff_arm.g * biome.g + tp_sand_arm.g * biome.b;
-	METALLIC = tp_grass_arm.b * biome.r + tp_cliff_arm.b * biome.g + tp_sand_arm.b * biome.b;
-	
-	SPECULAR = grass_specular * biome.r + cliff_specular * biome.g + sand_specular * biome.b;
-}
 
 void vertex(){
 	vec3 world_vertex = VERTEX + MODEL_MATRIX[3].xyz;
@@ -178,16 +133,9 @@ void vertex(){
 		abs(true_round((terrain_vertex.z - terrain_position.z) / partition_size))
 	);
 	
-	//vec2 partition_distance = vec2(
-		//abs(round(terrain_vertex.x / partition_size)),
-		//abs(round(terrain_vertex.z / partition_size))
-	//);
-	
 	float lod = true_round(max(abs(terrain_vertex.x), abs(terrain_vertex.z))/partition_size) * float(partition_lod_step);
 	lod = max(0.0, lod - float(partition_lod_zero_radius * partition_lod_step));
 	
-	//float lod = max(partition_distance.x, partition_distance.y) * partition_lod_step;
-	//
 	float subdivision_size = min(pow(2, lod), partition_size);
 
 	vec3 fraction = fract((VERTEX + partition_size / 2.0) / subdivision_size);
@@ -212,23 +160,51 @@ void vertex(){
 			fraction.z
 		);
 	}
-	//vec2 fracXZ = fract((VERTEX.xz + partition_size / 2.0) / subdivision_size);
-//
-//// Original bilinear interpolation logic (without conditionals)
-	//float heightX = mix(
-	    //get_height(world_vertex - vec3(fracXZ.x * subdivision_size, 0, 0)),
-	    //get_height(world_vertex + vec3((1.0 - fracXZ.x) * subdivision_size, 0, 0)),
-	    //fracXZ.x
-	//);
-//
-	//float heightZ = mix(
-	    //get_height(world_vertex - vec3(0, 0, fracXZ.y * subdivision_size)),
-	    //get_height(world_vertex + vec3(0, 0, (1.0 - fracXZ.y) * subdivision_size)),
-	    //fracXZ.y
-	//);
-//
-//// Blend between X/Z interpolations based on position relative to center
-	//float blend = smoothstep(0.45, 0.55, fracXZ.y); // Smoother transition
-	//VERTEX.y = mix(heightX, heightZ, blend);
+	world_vertex.y = VERTEX.y;
 	vert = world_vertex;
+	//NORMAL = calculate_normal(vert, normal_sampling_distance);
+}
+
+void fragment() {
+	// Normal calculations
+	vec3 interpolated_vert = vert;
+	interpolated_vert.y = get_height(vert);
+
+	// Albedo calculations
+	vec4 projected_coords = INV_VIEW_MATRIX * vec4(VERTEX, 1.0);
+	vec3 world_normal = abs(INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	vec3 normal_weights = abs(world_normal) / (abs(world_normal.x) + abs(world_normal.y) + abs(world_normal.z));
+	
+	vec3 biome = get_biome(vert);
+
+	vec3 tp_grass_albedo = get_triplanarized_map(grass_albedo, projected_coords, normal_weights, grass_uv_scale * 0.01);
+	vec3 tp_grass_normal = get_triplanarized_map(grass_normal, projected_coords, normal_weights, grass_uv_scale * 0.01);
+	vec3 tp_grass_arm = get_triplanarized_map(grass_arm, projected_coords, normal_weights, grass_uv_scale * 0.01);
+		
+	vec3 tp_cliff_albedo = get_triplanarized_map(cliff_albedo, projected_coords, normal_weights, cliff_uv_scale * 0.01);
+	vec3 tp_cliff_normal = get_triplanarized_map(cliff_normal, projected_coords, normal_weights, cliff_uv_scale * 0.01);
+	vec3 tp_cliff_arm = get_triplanarized_map(cliff_arm, projected_coords, normal_weights, cliff_uv_scale * 0.01);
+	
+	vec3 tp_sand_albedo = get_triplanarized_map(sand_albedo, projected_coords, normal_weights, sand_uv_scale * 0.01);
+	vec3 tp_sand_normal = get_triplanarized_map(sand_normal, projected_coords, normal_weights, sand_uv_scale * 0.01);
+	vec3 tp_sand_arm = get_triplanarized_map(sand_arm, projected_coords, normal_weights, sand_uv_scale * 0.01);
+	
+	ALBEDO = tp_grass_albedo * biome.r + tp_cliff_albedo * biome.g + tp_sand_albedo * biome.b;
+	
+	vec3 base_normal = get_normal_lod(vert);
+	
+	// THIS IS NOT CORRECT; THIS CAN BE ABOVE 1
+	vec3 detail_normal = tp_grass_normal * biome.r + tp_cliff_normal * biome.g + tp_sand_normal * biome.b;
+	
+	//vec3 base_normal = get_normal_lod(vert);
+	//ALBEDO = normal_2;
+	//NORMAL_MAP = base_normal;
+	NORMAL_MAP = mix(base_normal, detail_normal, 0.5);
+	//NORMAL_MAP = detail_normal;
+	
+	AO = tp_grass_arm.r * biome.r + tp_cliff_arm.r * biome.g + tp_sand_arm.r * biome.b;
+	ROUGHNESS = tp_grass_arm.g * biome.r + tp_cliff_arm.g * biome.g + tp_sand_arm.g * biome.b;
+	METALLIC = tp_grass_arm.b * biome.r + tp_cliff_arm.b * biome.g + tp_sand_arm.b * biome.b;
+	
+	SPECULAR = grass_specular * biome.r + cliff_specular * biome.g + sand_specular * biome.b;
 }

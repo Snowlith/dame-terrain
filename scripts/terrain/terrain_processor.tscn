@@ -9,6 +9,7 @@ viewport_path = NodePath("SubViewport")
 script = ExtResource("1_ovcli")
 
 [node name="SubViewport" type="SubViewport" parent="."]
+use_hdr_2d = true
 render_target_update_mode = 4
 
 [node name="ColorRect" type="ColorRect" parent="SubViewport"]
@@ -19,7 +20,6 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-visible = false
 scale = Vector2(2, 2)
 texture = SubResource("ViewportTexture_ovcli")
 centered = false
