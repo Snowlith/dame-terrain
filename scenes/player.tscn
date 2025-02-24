@@ -1,0 +1,149 @@
+[gd_scene load_steps=24 format=3 uid="uid://c0c4at6dndxd6"]
+
+[ext_resource type="Script" uid="uid://dvo1ntsvt3g3m" path="res://core/ecs/entity.gd" id="1_tuyoq"]
+[ext_resource type="Script" uid="uid://i7ugslpkcywi" path="res://scripts/camera/camera_manager.gd" id="2_fjrip"]
+[ext_resource type="Script" uid="uid://safgitx4odkc" path="res://scripts/state_machine/state_machine.gd" id="3_smehm"]
+[ext_resource type="Script" uid="uid://bwd31vcu4wejo" path="res://scripts/camera/camera_crouch_manager.gd" id="3_ur7pv"]
+[ext_resource type="Script" uid="uid://d4h8xp2p5kkx2" path="res://scripts/state_machine/states/walk_state.gd" id="4_ur7pv"]
+[ext_resource type="Script" uid="uid://jt4xqxesyhs7" path="res://scripts/camera/camera_bob_manager.gd" id="4_y4r1p"]
+[ext_resource type="Script" uid="uid://y5ucxy6sm8pe" path="res://scripts/state_machine/states/jump_state.gd" id="5_fjrip"]
+[ext_resource type="Script" uid="uid://c81qvhbndw00l" path="res://scripts/state_machine/states/air_state.gd" id="5_y4r1p"]
+[ext_resource type="Script" uid="uid://dnabnlo5vab8v" path="res://scripts/state_machine/states/crouch_state.gd" id="6_d2wvv"]
+[ext_resource type="Script" uid="uid://b3ch426lm62p4" path="res://scripts/state_machine/states/slide_state.gd" id="8_3v2ag"]
+[ext_resource type="AudioStream" uid="uid://bjeat5hnib5gl" path="res://assets/audio/footsteps/dirt/footstep_dirt-03.ogg" id="10_qfm1y"]
+[ext_resource type="Script" uid="uid://bf2us3toshta5" path="res://scripts/fps_counter.gd" id="10_y4r1p"]
+[ext_resource type="PackedScene" uid="uid://dlrmw33m38r1v" path="res://scenes/omni_light_3d.tscn" id="11_d2wvv"]
+[ext_resource type="AudioStream" uid="uid://c7h4uvjoo0ely" path="res://assets/audio/footsteps/dirt/footstep_dirt-04.ogg" id="11_fulsm"]
+[ext_resource type="AudioStream" uid="uid://br82llud7e4qb" path="res://assets/audio/footsteps/dirt/footstep_dirt-01.ogg" id="11_oprun"]
+[ext_resource type="AudioStream" uid="uid://dxe6p2fo1we4k" path="res://assets/audio/footsteps/dirt/footstep_dirt-02.ogg" id="12_a8ls1"]
+[ext_resource type="Script" uid="uid://dhoyglncwng6x" path="res://scripts/footstep_manager/footstep_manager.gd" id="13_jej6c"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_3v2ag"]
+radius = 0.4
+height = 1.8
+radial_segments = 16
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_jej6c"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_d2wvv"]
+radius = 0.4
+height = 1.2
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_3v2ag"]
+radius = 0.35
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_4r5pv"]
+streams_count = 2
+stream_0/stream = ExtResource("10_qfm1y")
+stream_1/stream = ExtResource("11_fulsm")
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_qfm1y"]
+streams_count = 2
+stream_0/stream = ExtResource("11_oprun")
+stream_1/stream = ExtResource("12_a8ls1")
+
+[node name="Player" type="CharacterBody3D"]
+physics_interpolation_mode = 1
+floor_max_angle = 1.0472
+script = ExtResource("1_tuyoq")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_3v2ag")
+
+[node name="StandCollider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_jej6c")
+
+[node name="CrouchCollider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("CapsuleShape3D_d2wvv")
+
+[node name="ShapeCast3D" type="ShapeCast3D" parent="CrouchCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.787743, 0)
+shape = SubResource("SphereShape3D_3v2ag")
+target_position = Vector3(0, 0, 0)
+debug_shape_custom_color = Color(1, 0, 0, 1)
+
+[node name="CameraManager" type="Node3D" parent="." node_paths=PackedStringArray("nodes_with_camera_offset")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.37319, 0)
+script = ExtResource("2_fjrip")
+nodes_with_camera_offset = [NodePath("CameraCrouchManager"), NodePath("CameraBobManager")]
+
+[node name="Camera3D" type="Camera3D" parent="CameraManager"]
+physics_interpolation_mode = 1
+fov = 80.0
+far = 500.0
+
+[node name="CameraCrouchManager" type="Node" parent="CameraManager" node_paths=PackedStringArray("stand_collider", "crouch_collider", "shape_cast")]
+script = ExtResource("3_ur7pv")
+stand_collider = NodePath("../../StandCollider")
+crouch_collider = NodePath("../../CrouchCollider")
+shape_cast = NodePath("../../CrouchCollider/ShapeCast3D")
+metadata/_custom_type_script = "uid://bwd31vcu4wejo"
+
+[node name="CameraBobManager" type="Node" parent="CameraManager"]
+script = ExtResource("4_y4r1p")
+metadata/_custom_type_script = "uid://jt4xqxesyhs7"
+
+[node name="StateMachine" type="Node" parent="."]
+script = ExtResource("3_smehm")
+metadata/_custom_type_script = "uid://safgitx4odkc"
+
+[node name="WalkState" type="Node" parent="StateMachine"]
+script = ExtResource("4_ur7pv")
+metadata/_custom_type_script = "uid://d4h8xp2p5kkx2"
+
+[node name="CrouchState" type="Node" parent="StateMachine" node_paths=PackedStringArray("cam_crouch")]
+script = ExtResource("6_d2wvv")
+cam_crouch = NodePath("../../CameraManager/CameraCrouchManager")
+metadata/_custom_type_script = "uid://dnabnlo5vab8v"
+
+[node name="SlideState" type="Node" parent="StateMachine" node_paths=PackedStringArray("cam_bob", "cam_crouch")]
+script = ExtResource("8_3v2ag")
+cam_bob = NodePath("../../CameraManager/CameraBobManager")
+cam_crouch = NodePath("../../CameraManager/CameraCrouchManager")
+metadata/_custom_type_script = "uid://b3ch426lm62p4"
+
+[node name="AirState" type="Node" parent="StateMachine"]
+script = ExtResource("5_y4r1p")
+landing_sound = SubResource("AudioStreamRandomizer_4r5pv")
+metadata/_custom_type_script = "uid://c81qvhbndw00l"
+
+[node name="JumpState" type="Node" parent="StateMachine"]
+script = ExtResource("5_fjrip")
+allow_bunnyhop = true
+jump_sound = SubResource("AudioStreamRandomizer_qfm1y")
+metadata/_custom_type_script = "uid://y5ucxy6sm8pe"
+
+[node name="PanelContainer" type="PanelContainer" parent="StateMachine"]
+visible = false
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="StateMachine/PanelContainer"]
+layout_mode = 2
+
+[node name="FPSCounter" type="Node" parent="."]
+script = ExtResource("10_y4r1p")
+light_scene = ExtResource("11_d2wvv")
+
+[node name="Label" type="Label" parent="FPSCounter"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 23.0
+grow_horizontal = 0
+text = "FPS"
+
+[node name="FootstepManager" type="Node3D" parent="."]
+script = ExtResource("13_jej6c")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="FootstepManager"]
+max_polyphony = 2
+
+[node name="RayCast3D" type="RayCast3D" parent="FootstepManager"]
+target_position = Vector3(0, -0.2, 0)

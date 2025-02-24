@@ -1,0 +1,59 @@
+[gd_resource type="ShaderMaterial" load_steps=11 format=3 uid="uid://bkqf7m7ip7dc3"]
+
+[ext_resource type="Shader" uid="uid://c0fnflywr6mjm" path="res://scripts/terrain/terrain_processor.gdshader" id="1_6ytjt"]
+
+[sub_resource type="Gradient" id="Gradient_lnohu"]
+offsets = PackedFloat32Array(0, 0.758824)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_6ytjt"]
+gradient = SubResource("Gradient_lnohu")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.965812, 0.0683761)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ovcli"]
+frequency = 0.0081
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_qy7qw"]
+noise = SubResource("FastNoiseLite_ovcli")
+
+[sub_resource type="Gradient" id="Gradient_6ytjt"]
+offsets = PackedFloat32Array(0, 0.232019, 0.306264, 0.726218, 0.842227)
+colors = PackedColorArray(0, 0, 0, 1, 0.358886, 0.358886, 0.358886, 1, 0.495262, 0.495262, 0.495262, 1, 0.728538, 0.728538, 0.728538, 1, 1, 1, 1, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_qy7qw"]
+noise_type = 0
+frequency = 0.0049
+fractal_octaves = 4
+fractal_lacunarity = 1.515
+fractal_gain = 0.39
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ikybf"]
+color_ramp = SubResource("Gradient_6ytjt")
+noise = SubResource("FastNoiseLite_qy7qw")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ikybf"]
+frequency = 0.0109
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_dddur"]
+noise = SubResource("FastNoiseLite_ikybf")
+
+[resource]
+shader = ExtResource("1_6ytjt")
+shader_parameter/mode = 3
+shader_parameter/cycle_mode = false
+shader_parameter/amplitude = 100.0
+shader_parameter/normal_sampling_distance = 4.0
+shader_parameter/steepness_sampling_distance = 4.0
+shader_parameter/biome_sampling_distance = 4.0
+shader_parameter/noise_map = SubResource("NoiseTexture2D_ikybf")
+shader_parameter/falloff_map = SubResource("GradientTexture2D_6ytjt")
+shader_parameter/max_grass_steepness = 0.324
+shader_parameter/grass_edge_smoothing = 0.035
+shader_parameter/grass_edge_noise = SubResource("NoiseTexture2D_qy7qw")
+shader_parameter/grass_edge_noise_intensity = 0.209
+shader_parameter/max_sand_height = 0.069
+shader_parameter/sand_edge_smoothing = 0.01
+shader_parameter/sand_edge_noise = SubResource("NoiseTexture2D_dddur")
+shader_parameter/sand_edge_noise_intensity = 0.28

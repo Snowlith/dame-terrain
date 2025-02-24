@@ -1,0 +1,57 @@
+[gd_resource type="ArrayMesh" load_steps=8 format=4 uid="uid://b5potrmumuwuv"]
+
+[ext_resource type="Shader" uid="uid://doot2looq2irr" path="res://scripts/terrain/GrassShader.gdshader" id="1_ty410"]
+[ext_resource type="Texture2D" uid="uid://ib1oppdk2f5d" path="res://assets/textures/grass/GreenGrassAlbedo.png" id="2_riiku"]
+[ext_resource type="Texture2D" uid="uid://da8jr2b8kgloi" path="res://assets/textures/grass/GreenGrassNormalMap.png" id="3_lubb5"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_uovi7"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ltf2g"]
+noise = SubResource("FastNoiseLite_uovi7")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d4hfj"]
+render_priority = 0
+shader = ExtResource("1_ty410")
+shader_parameter/DeformationDirectionSampleRange = 0.5
+shader_parameter/WindNoise = SubResource("NoiseTexture2D_ltf2g")
+shader_parameter/WindNoiseScale = 1.0
+shader_parameter/WindSpeed = 0.09
+shader_parameter/WindScale = 0.115
+shader_parameter/Albedo = ExtResource("2_riiku")
+shader_parameter/NormalMap = ExtResource("3_lubb5")
+shader_parameter/baseColor = Color(0.795667, 0.88, 0.66, 1)
+shader_parameter/tampedColor = Color(0.998648, 1.05888e-06, 0.578155, 1)
+shader_parameter/EffectFadeInSoftness = 1.0
+shader_parameter/EffectMultiplier = 1.0
+shader_parameter/NormalMapPower = 0.136
+shader_parameter/AlphaThreshold = 0.0311
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_rye01"]
+_surfaces = [{
+"aabb": AABB(-1.21856, -0.311988, -0.785519, 2.12198, 1.71317, 1.76374),
+"format": 34896613377,
+"index_count": 54,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAADAAAABAAFAAMABgAHAAgABgAJAAcACgAJAAYACgALAAkADAANAA4ADAAPAA0AEAARABIAEAATABEAFAAQABIAFAASABUAFgAXABgAFgAZABcAGgAWABgAGgAYABsA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 28,
+"vertex_data": PackedByteArray("hph8BVpqAADW/P//LnsAAL6mfARNMAAAlt1p4E3SAADLZHwEm4oAAKWKheL//wAAy4x8BVyCAABsYYbYGF0AAIxtegProQAATZfoxIYwAACYuyALfIgAAAjfWrdOQgAAAZAAALlEAAConF2m8bEAADrBHwVahwAAEl7ZnzldAABOUIZRuUIAAB0xbWmL8gAAandpVtnDAAAAAEpjYlAAAFyXzABuPAAA67EdBB6UAACvyGFCVYMAAL/EwlIAAAAAgplaStowAAD//79IlGcAAHWPTwACnAAAa2+5Bf9jAAA=")
+}]
+blend_shape_mode = 0
+
+[resource]
+resource_name = "GreenGrass1_Plane_007"
+_surfaces = [{
+"aabb": AABB(-1.21856, -0.311988, -0.785519, 2.12198, 1.71317, 1.76374),
+"attribute_data": PackedByteArray("c8G19v//14Jv7v//Xsjlg4qJBf4XiteCc8G19v//14Jv7v//Xsjlg4qJBf4XiteCF4q19v//14L+/7X2F4rXgheKVcz//9eC//9VzBeK14IXirX2/v+19heKVcz//9eC//9VzBeK14IXirX2/v+19g=="),
+"format": 34896613399,
+"index_count": 54,
+"index_data": PackedByteArray("AAABAAIAAAADAAEABAADAAAABAAFAAMABgAHAAgABgAJAAcACgAJAAYACgALAAkADAANAA4ADAAPAA0AEAARABIAEAATABEAFAAQABIAFAASABUAFgAXABgAFgAZABcAGgAWABgAGgAYABsA"),
+"material": SubResource("ShaderMaterial_d4hfj"),
+"primitive": 3,
+"uv_scale": Vector4(1.99696, 2.15646, 0, 0),
+"vertex_count": 28,
+"vertex_data": PackedByteArray("hph8BVpqwwPW/P//LnuYx76mfARNMJwAlt1p4E3SA0fLZHwEm4p7DaWKheL//4+ly4x8BVyCq9dsYYbYGF0R3IxtegProXa6TZfoxIYw9PeYuyALfIh90QjfWrdOQkrvAZAAALlEstionF2m8bFiqzrBHwVahyyREl7Znzldb8pOUIZRuULyzx0xbWmL8tBeandpVtnDqJkAAEpjYlAYOFyXzABuPIPp67EdBB6UrouvyGFCVYN9ur/EwlIAAEYIgplaStowQPj//79IlGfQNnWPTwACnPYDa2+5Bf9jjARg/kqmtcMKKPAhglVh1YQqrVH9jHL9Gqo8grD99IsKyz6xFuduhP/TbZYVInNOuAWRmNvuMrsAnpKauwHxufTDu5LH6naTi92OlpvTF5FG61SjBODhoVqpwmEVAyaQrQUQd1DtvG09AGL+lv5M+Kar")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_rye01")
