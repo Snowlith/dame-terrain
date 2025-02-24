@@ -10,9 +10,10 @@ colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
 gradient = SubResource("Gradient_lnohu")
 fill = 1
 fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.965812, 0.0683761)
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_ovcli"]
-frequency = 0.0033
+frequency = 0.0081
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_qy7qw"]
 noise = SubResource("FastNoiseLite_ovcli")
@@ -33,6 +34,7 @@ color_ramp = SubResource("Gradient_6ytjt")
 noise = SubResource("FastNoiseLite_qy7qw")
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_ikybf"]
+frequency = 0.0109
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_dddur"]
 noise = SubResource("FastNoiseLite_ikybf")
@@ -47,11 +49,11 @@ shader_parameter/steepness_sampling_distance = 4.0
 shader_parameter/biome_sampling_distance = 4.0
 shader_parameter/noise_map = SubResource("NoiseTexture2D_ikybf")
 shader_parameter/falloff_map = SubResource("GradientTexture2D_6ytjt")
-shader_parameter/max_grass_steepness = 0.359
-shader_parameter/grass_edge_smoothing = 0.208
+shader_parameter/max_grass_steepness = 0.324
+shader_parameter/grass_edge_smoothing = 0.035
 shader_parameter/grass_edge_noise = SubResource("NoiseTexture2D_qy7qw")
-shader_parameter/grass_edge_noise_intensity = 0.18
-shader_parameter/max_sand_height = 0.155
-shader_parameter/sand_edge_smoothing = 0.029
+shader_parameter/grass_edge_noise_intensity = 0.209
+shader_parameter/max_sand_height = 0.069
+shader_parameter/sand_edge_smoothing = 0.01
 shader_parameter/sand_edge_noise = SubResource("NoiseTexture2D_dddur")
-shader_parameter/sand_edge_noise_intensity = 0.527
+shader_parameter/sand_edge_noise_intensity = 0.28

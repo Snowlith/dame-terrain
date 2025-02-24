@@ -1,6 +1,8 @@
 shader_type particles;
 
 group_uniforms instancing;
+uniform vec3 preferred_biome: source_color;
+uniform float biome_threshold: hint_range(0.0, 1.0);
 uniform int instance_rows;
 uniform float instance_spacing;
 uniform float density_adjust;
@@ -13,19 +15,16 @@ uniform float random_spacing;
 uniform vec3 min_scale = vec3(1.0);
 uniform vec3 max_scale = vec3(1.0);
 
-group_uniforms steepness_definition;
-uniform float max_spawn_steepness : hint_range(0, 1.0) = 0.85;
-
 group_uniforms externally_assigned;
 uniform sampler2D height_map: hint_default_white;
 uniform vec2 height_map_offset = vec2(0.5);
-uniform sampler2D steepness_map: hint_default_white;
-uniform vec2 steepness_map_offset = vec2(0.5);
 uniform sampler2D normal_map: hint_normal;
 uniform vec2 normal_map_offset = vec2(0.5);
+uniform sampler2D biome_map: hint_default_black;
+uniform vec2 biome_map_offset = vec2(0.5);
 uniform sampler2D density_map;
 uniform vec2 density_map_offset = vec2(0.5);
-uniform float amplitude = 50.0;
+uniform float amplitude = 1.0;
 
 render_mode disable_velocity, disable_force;
 
@@ -46,50 +45,30 @@ mat4 rotate_y(float theta) {
     return mat4(vec4(cos(theta), 0, -sin(theta), 0), vec4(0, 1, 0, 0), vec4(sin(theta), 0, cos(theta), 0), vec4(0, 0, 0, 1));
 }
 
-float get_height(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(height_map,0).x);
+vec4 sample_bounded(sampler2D sampler, vec3 world_vertex, vec2 uv_offset, vec4 default_argument) {
+	vec2 uv = (world_vertex.xz + vec2(0.5)) / float(textureSize(sampler,0).x);
 
-	// Bounds
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return 0.0;
-	}
-
-	float height_value = texture(height_map, texture_position + height_map_offset).r;
-	return height_value * amplitude;
-}
-
-float get_density(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(density_map,0).x);
-
-	// Bounds
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return 0.0;
-	}
-
-	return texture(density_map, texture_position + density_map_offset).r;
-}
-
-vec3 get_normal(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(normal_map,0).x);
-
-	// Bounds
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return vec3(0, 0, 1);
-	}
-
-	return unpack_normal(texture(normal_map, texture_position + normal_map_offset).rgb);
-}
-
-float get_steepness(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(height_map,0).x);
-
-	// Bounds
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return 0.0;
+	if (abs(uv.x) > 0.5 || abs(uv.y) > 0.5) {
+		return default_argument;
 	}
 	
-	float steepness_value = texture(steepness_map, texture_position + steepness_map_offset).r;
-	return steepness_value;
+	return texture(sampler, uv + uv_offset);
+}
+
+float get_height(vec3 world_vertex){
+	return sample_bounded(height_map, world_vertex, height_map_offset, vec4(0.0)).r * amplitude;
+}
+
+vec3 get_biome(vec3 world_vertex) {
+	return sample_bounded(biome_map, world_vertex, biome_map_offset, vec4(0.0, 0.0, 1.0, 0.0)).rgb;
+}
+
+vec3 get_normal(vec3 world_vertex) {
+	return sample_bounded(normal_map, world_vertex, normal_map_offset, vec4(0.5, 0.5, 1.0, 0.0)).rgb;
+}
+
+float get_density(vec3 world_vertex) {
+	return sample_bounded(density_map, world_vertex, density_map_offset, vec4(0.0)).r;
 }
 
 void start() {
@@ -117,20 +96,14 @@ void start() {
 	pos.x += ((r.x * 2.0) - 1.0) * random_spacing;
 	pos.z += ((r.y * 2.0) - 1.0) * random_spacing;
 	
-	// map world space to heightmap space
-	float pixel_size = 1.0 / float(textureSize(height_map, 0).x);
-	vec2 half_pixel_offset = vec2(pixel_size, pixel_size) / 2.0;
-	float heightmap_size = float(textureSize(height_map, 0).x);
-	//vec2 world_map_uv = pos.xz * (1.0 / (heightmap_scale * heightmap_size)) + vec2(0.5) + half_pixel_offset;
-	
 	// set the height according to the heightmap data
 	pos.y = get_height(pos);
 	
 	// hash the density using the density texture
 	
-	float steepness = get_steepness(pos);
+	vec3 biome = get_biome(pos);
 	float density = get_density(pos);
-	if (steepness > max_spawn_steepness || density * density_adjust > r.x) {
+	if (max(0, dot(biome, preferred_biome)) < biome_threshold || density * density_adjust > r.x) {
 		pos.y = -10000.0;
 	}
 	

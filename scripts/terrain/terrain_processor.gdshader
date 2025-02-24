@@ -86,9 +86,10 @@ vec3 get_normal(vec2 pos, float sampling_distance) {
 	float right = get_height_smooth(pos + vec2(offset.x, 0.0)) * amplitude;
 	float up = get_height_smooth(pos - vec2(0.0, offset.y)) * amplitude;
 	float down = get_height_smooth(pos + vec2(0.0, offset.y)) * amplitude;
-	
+
 	vec3 normal = normalize(vec3(left - right, down - up, 2.0 * sampling_distance));
-	return (normal + 1.0) * 0.5;
+	//return vec3(0.5, 0.5, 1.0);
+	return normal * 0.5 + 0.5;
 }
 
 float get_steepness(vec2 pos, float sampling_distance) {
@@ -99,15 +100,37 @@ vec3 get_biome(vec2 pos, float sampling_distance) {
 	float height = get_height_smooth(pos);
 	float steepness = get_steepness(pos, sampling_distance);
 	
-	float grass_noise = mix(1.0, texture(grass_edge_noise, pos).r, grass_edge_noise_intensity);
-	float sand_noise = mix(1.0, texture(sand_edge_noise, pos).r, sand_edge_noise_intensity);
+	float grass_noise = mix(1.0, texture(grass_edge_noise, pos).r * 2.0, grass_edge_noise_intensity);
+	float sand_noise = mix(1.0, texture(sand_edge_noise, pos).r * 2.0, sand_edge_noise_intensity);
 	
-	float cliff_factor = smoothstep(max_grass_steepness - grass_edge_smoothing, max_grass_steepness, steepness * grass_noise);
-	float sand_factor = 1.0 - smoothstep(max_sand_height - sand_edge_smoothing, max_sand_height, height * sand_noise);
-	float grass_factor = (1.0 - cliff_factor) * (1.0 - sand_factor);
+	// TODO: make the smoothing terms relative to the value
 	
-	return vec3(grass_factor, cliff_factor * (1.0 - sand_factor), sand_factor);
+	float height_transition = 1.0 - smoothstep(max_sand_height - sand_edge_smoothing / 2.0, max_sand_height + sand_edge_smoothing / 2.0, height * sand_noise);
+	float steepness_transition = 1.0 - smoothstep(max_grass_steepness - grass_edge_smoothing / 2.0, max_grass_steepness + grass_edge_smoothing / 2.0, steepness * grass_noise);
+	
+	float priority = 1.0;
+	float sand_factor = height_transition;
+	priority -= sand_factor;
+	float grass_factor = min(priority, steepness_transition);
+	priority -= grass_factor;
+	float cliff_factor = min(priority, 1.0 - grass_factor);
+	
+	return vec3(grass_factor, cliff_factor, sand_factor);
 }
+//
+//vec3 get_biome(vec2 pos, float sampling_distance) {
+	//float height = get_height_smooth(pos);
+	//float steepness = get_steepness(pos, sampling_distance);
+	//
+	//float grass_noise = mix(1.0, texture(grass_edge_noise, pos).r, grass_edge_noise_intensity);
+	//float sand_noise = mix(1.0, texture(sand_edge_noise, pos).r, sand_edge_noise_intensity);
+	//
+	//float cliff_factor = smoothstep(max_grass_steepness - grass_edge_smoothing, max_grass_steepness, steepness * grass_noise);
+	//float sand_factor = 1.0 - smoothstep(max_sand_height - sand_edge_smoothing, max_sand_height, height * sand_noise);
+	//float grass_factor = (1.0 - cliff_factor) * (1.0 - sand_factor);
+	//return vec3(grass_factor, cliff_factor * (1.0 - sand_factor), sand_factor);
+	////return normalize(vec3(grass_factor, cliff_factor * (1.0 - sand_factor), sand_factor));
+//}
 
 void fragment() {
 	int current_mode = int(mod(TIME, 4.0));

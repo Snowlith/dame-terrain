@@ -1,13 +1,11 @@
 shader_type spatial;
 
-//render_mode wireframe;
-//render_mode diffuse_lambert, specular_toon;
+render_mode diffuse_toon, specular_schlick_ggx;
 
 group_uniforms settings;
 uniform float partition_size = 16.0;
 uniform int partition_lod_step = 1;
 uniform int partition_lod_zero_radius = 1;
-uniform float normal_sampling_lod = 1.0;
 
 group_uniforms textures;
 uniform sampler2D grass_albedo : hint_default_white;
@@ -34,10 +32,8 @@ uniform vec3 terrain_position;
 
 uniform sampler2D height_map: hint_default_white;
 uniform vec2 height_map_offset = vec2(0.5);
-
 uniform sampler2D normal_map: hint_normal;
 uniform vec2 normal_map_offset = vec2(0.5);
-
 uniform sampler2D biome_map: hint_default_black;
 uniform vec2 biome_map_offset = vec2(0.5);
 
@@ -49,79 +45,44 @@ float true_round(float value){
 	return floor(value + 0.5);
 }
 
-vec3 get_triplanarized_map(sampler2D sampler, vec4 projected_coords, vec3 normal_weights, float uv_scale) {
-	vec3 texX = texture(sampler, projected_coords.zy * uv_scale).rgb;
-	vec3 texY = texture(sampler, projected_coords.xz * uv_scale).rgb;
-	vec3 texZ = texture(sampler, projected_coords.xy * uv_scale).rgb;
-	return texX * normal_weights.x + texY * normal_weights.y + texZ * normal_weights.z;
+vec3 triplanarize(sampler2D sampler, vec4 projected_coords, vec3 normal_weights, float uv_scale) {
+	vec3 x = texture(sampler, projected_coords.zy * uv_scale).rgb;
+	vec3 y = texture(sampler, projected_coords.xz * uv_scale).rgb;
+	vec3 z = texture(sampler, projected_coords.xy * uv_scale).rgb;
+	return x * normal_weights.x + y * normal_weights.y + z * normal_weights.z;
 }
+
+vec4 sample_bounded(sampler2D sampler, vec3 world_vertex, vec2 uv_offset, vec4 default_argument) {
+	vec2 uv = (world_vertex.xz + vec2(0.5)) / float(textureSize(sampler,0).x);
+
+	if (abs(uv.x) > 0.5 || abs(uv.y) > 0.5) {
+		return default_argument;
+	}
+	
+	return texture(sampler, uv + uv_offset);
+}
+
+//vec4 sample_lod_bounded(sampler2D sampler, vec3 world_vertex, vec2 uv_offset, vec4 default_argument, float lod) {
+	//vec2 uv = (world_vertex.xz + vec2(0.5))/float(textureSize(sampler,0).x);
+//
+	//if (abs(uv.x) > 0.5 || abs(uv.y) > 0.5) {
+		//return default_argument;
+	//}
+	//
+	//return textureLod(sampler, uv + uv_offset, lod);
+//}
 
 float get_height(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(height_map,0).x);
-
-	// Bounds
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return 0.0;
-	}
-
-	float height_value = texture(height_map, texture_position + height_map_offset).r;
-	return height_value * amplitude;
+	return sample_bounded(height_map, world_vertex, height_map_offset, vec4(0.0)).r * amplitude;
 }
 
-vec3 get_biome(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(biome_map,0).x);
-
-	// if out of bounds, use sand
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return vec3(0, 0, 1);
-	}
-	
-	return texture(biome_map, texture_position + biome_map_offset).rgb;
+vec3 get_biome(vec3 world_vertex) {
+	return sample_bounded(biome_map, world_vertex, biome_map_offset, vec4(0.0, 0.0, 1.0, 0.0)).rgb;
 }
 
-vec3 get_normal(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(normal_map,0).x);
-
-	// if out of bounds, use sand
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return vec3(0, 0, 1);
-	}
-	
-	return texture(normal_map, texture_position + normal_map_offset).rgb;
+vec3 get_normal(vec3 world_vertex) {
+	return sample_bounded(normal_map, world_vertex, normal_map_offset, vec4(0.5, 0.5, 1.0, 0.0)).rgb;
 }
-
-vec3 get_normal_lod(vec3 world_vertex){
-	vec2 texture_position = (world_vertex.xz + vec2(0.5))/float(textureSize(normal_map,0).x);
-
-	// if out of bounds, use sand
-	if (abs(texture_position.x) > 0.5 || abs(texture_position.y) > 0.5) {
-		return vec3(0, 0, 1);
-	}
-	
-	return textureLod(normal_map, texture_position + normal_map_offset, normal_sampling_lod).rgb;
-}
-
-vec3 to_normal_map(vec3 n){
-	n *= vec3(1.0, 1.0, -1.0);
-	n = n / 2.0 + 0.5;
-	n = vec3(n.x, n.z, n.y);
-	return n;
-}
-
-vec3 unpack_normal_map(vec3 rgb) {
-	vec3 n = rgb.xzy * 2.0 - vec3(1.0);
-	n.z *= -1.0;
-	return n;
-}
-
-// reoriented normal mapping
-vec3 rnm_blend(vec3 base_normal, vec3 detail_normal){
-	base_normal = base_normal * 2.0 + vec3(-1, -1, 0);
-	detail_normal = detail_normal * vec3(-2, -2, 2) - vec3(1, 1, -1);
-	vec3 r = base_normal * dot(base_normal, detail_normal) / base_normal.z - detail_normal;
-	return normalize(r) * 0.5 + 0.5;
-}
-
 
 void vertex(){
 	vec3 world_vertex = VERTEX + MODEL_MATRIX[3].xyz;
@@ -162,49 +123,44 @@ void vertex(){
 	}
 	world_vertex.y = VERTEX.y;
 	vert = world_vertex;
-	//NORMAL = calculate_normal(vert, normal_sampling_distance);
 }
 
 void fragment() {
-	// Normal calculations
-	vec3 interpolated_vert = vert;
-	interpolated_vert.y = get_height(vert);
-
-	// Albedo calculations
 	vec4 projected_coords = INV_VIEW_MATRIX * vec4(VERTEX, 1.0);
 	vec3 world_normal = abs(INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	vec3 normal_weights = abs(world_normal) / (abs(world_normal.x) + abs(world_normal.y) + abs(world_normal.z));
 	
 	vec3 biome = get_biome(vert);
-
-	vec3 tp_grass_albedo = get_triplanarized_map(grass_albedo, projected_coords, normal_weights, grass_uv_scale * 0.01);
-	vec3 tp_grass_normal = get_triplanarized_map(grass_normal, projected_coords, normal_weights, grass_uv_scale * 0.01);
-	vec3 tp_grass_arm = get_triplanarized_map(grass_arm, projected_coords, normal_weights, grass_uv_scale * 0.01);
-		
-	vec3 tp_cliff_albedo = get_triplanarized_map(cliff_albedo, projected_coords, normal_weights, cliff_uv_scale * 0.01);
-	vec3 tp_cliff_normal = get_triplanarized_map(cliff_normal, projected_coords, normal_weights, cliff_uv_scale * 0.01);
-	vec3 tp_cliff_arm = get_triplanarized_map(cliff_arm, projected_coords, normal_weights, cliff_uv_scale * 0.01);
 	
-	vec3 tp_sand_albedo = get_triplanarized_map(sand_albedo, projected_coords, normal_weights, sand_uv_scale * 0.01);
-	vec3 tp_sand_normal = get_triplanarized_map(sand_normal, projected_coords, normal_weights, sand_uv_scale * 0.01);
-	vec3 tp_sand_arm = get_triplanarized_map(sand_arm, projected_coords, normal_weights, sand_uv_scale * 0.01);
+	// albedo
+	vec3 r_albedo = triplanarize(grass_albedo, projected_coords, normal_weights, grass_uv_scale * 0.01);
+	vec3 g_albedo = triplanarize(cliff_albedo, projected_coords, normal_weights, cliff_uv_scale * 0.01);
+	vec3 b_albedo = triplanarize(sand_albedo, projected_coords, normal_weights, sand_uv_scale * 0.01);
 	
-	ALBEDO = tp_grass_albedo * biome.r + tp_cliff_albedo * biome.g + tp_sand_albedo * biome.b;
+	ALBEDO = r_albedo * biome.r + g_albedo * biome.g + b_albedo * biome.b;
 	
-	vec3 base_normal = get_normal_lod(vert);
+	// ARM: ambient occlusion, roughness, metallic
+	vec3 r_arm = triplanarize(grass_arm, projected_coords, normal_weights, grass_uv_scale * 0.01);
+	vec3 g_arm = triplanarize(cliff_arm, projected_coords, normal_weights, cliff_uv_scale * 0.01);
+	vec3 b_arm = triplanarize(sand_arm, projected_coords, normal_weights, sand_uv_scale * 0.01);
 	
-	// THIS IS NOT CORRECT; THIS CAN BE ABOVE 1
-	vec3 detail_normal = tp_grass_normal * biome.r + tp_cliff_normal * biome.g + tp_sand_normal * biome.b;
+	AO = r_arm[0] * biome.r + g_arm[0] * biome.g + b_arm[0] * biome.b;
+	ROUGHNESS = r_arm[1] * biome.r + g_arm[1] * biome.g + b_arm[1] * biome.b;
+	METALLIC = r_arm[2] * biome.r + g_arm[2] * biome.g + b_arm[2] * biome.b;
 	
-	//vec3 base_normal = get_normal_lod(vert);
-	//ALBEDO = normal_2;
-	//NORMAL_MAP = base_normal;
-	NORMAL_MAP = mix(base_normal, detail_normal, 0.5);
-	//NORMAL_MAP = detail_normal;
+	// normal mapping
+	vec3 r_normal = triplanarize(grass_normal, projected_coords, normal_weights, grass_uv_scale * 0.01);
+	vec3 g_normal = triplanarize(cliff_normal, projected_coords, normal_weights, cliff_uv_scale * 0.01);
+	vec3 b_normal = triplanarize(sand_normal, projected_coords, normal_weights, sand_uv_scale * 0.01);
 	
-	AO = tp_grass_arm.r * biome.r + tp_cliff_arm.r * biome.g + tp_sand_arm.r * biome.b;
-	ROUGHNESS = tp_grass_arm.g * biome.r + tp_cliff_arm.g * biome.g + tp_sand_arm.g * biome.b;
-	METALLIC = tp_grass_arm.b * biome.r + tp_cliff_arm.b * biome.g + tp_sand_arm.b * biome.b;
+	vec3 base_unpacked = get_normal(vert) * 2.0 - 1.0;
 	
+	vec3 r_unpacked = (r_normal * 2.0 - 1.0) * biome.r;
+	vec3 g_unpacked = (g_normal * 2.0 - 1.0) * biome.g;
+	vec3 b_unpacked = (b_normal * 2.0 - 1.0) * biome.b;
+	
+	NORMAL_MAP = (base_unpacked + r_unpacked + g_unpacked + b_unpacked) * 0.5 + 0.5;
+	
+	// specular
 	SPECULAR = grass_specular * biome.r + cliff_specular * biome.g + sand_specular * biome.b;
 }

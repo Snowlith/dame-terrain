@@ -55,7 +55,7 @@ func generate_terrain():
 	print("[TerrainGenerator] Generating...")
 	get_shader_uniforms()
 	await generate_maps()
-	generate_partitions()
+	await generate_partitions()
 	if Engine.is_editor_hint():
 		return
 	generate_colliders()
@@ -76,10 +76,10 @@ func generate_maps():
 	steepness_image = await terrain_processor.get_image(2)
 	biome_image = await terrain_processor.get_image(3)
 	
-	height_image.generate_mipmaps(true)
-	steepness_image.generate_mipmaps(true)
-	biome_image.generate_mipmaps(true)
-	normal_image.generate_mipmaps(true)
+	#height_image.generate_mipmaps(true)
+	#steepness_image.generate_mipmaps(true)
+	#biome_image.generate_mipmaps(true)
+	#normal_image.generate_mipmaps(true)
 	
 	height_texture = ImageTexture.create_from_image(height_image)
 	steepness_texture = ImageTexture.create_from_image(steepness_image)
@@ -96,15 +96,16 @@ func generate_maps():
 	
 	for gpu_particles: GPUParticles3D in foliage_particles:
 		var mat: ShaderMaterial = gpu_particles.process_material
-		mat.set_shader_parameter("height_map", height_texture)
-		mat.set_shader_parameter("steepness_map", steepness_texture)
+		print("SETTING STUFF")
 		mat.set_shader_parameter("amplitude", amplitude)
+		mat.set_shader_parameter("height_map", height_texture)
 		mat.set_shader_parameter("normal_map", normal_texture)
-	
-	maps_calculated.emit()
+		mat.set_shader_parameter("biome_map", biome_texture)
 	
 	remove_child(terrain_processor)
 	terrain_processor.queue_free()
+	
+	maps_calculated.emit()
 	
 func generate_colliders():
 	for physics_body in physics_bodies:
