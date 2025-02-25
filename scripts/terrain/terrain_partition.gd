@@ -16,9 +16,10 @@ func _ready():
 	
 	position = Vector3(x,0,z) * size
 	
-	var lod = max(abs(x),abs(z)) * lod_step
+	var lod = max(abs(x), abs(z)) * lod_step
 	lod = max(0, lod - lod_zero_radius * lod_step)
-	var subdivision_length = pow(2,lod)
-	var subdivides = max(size/subdivision_length - 1, 0)
-	mesh.subdivide_width = subdivides
-	mesh.subdivide_depth = subdivides
+	var subdivisions = pow(2, lod)
+	var subdivision_depth = max(size / subdivisions - 1, 0)
+	
+	mesh.subdivide_width = subdivision_depth
+	mesh.subdivide_depth = subdivision_depth

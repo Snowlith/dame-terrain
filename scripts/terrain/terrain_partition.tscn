@@ -6,6 +6,6 @@
 size = Vector2(0, 0)
 
 [node name="TerrainPartition" type="MeshInstance3D"]
-extra_cull_margin = 128.0
+extra_cull_margin = 64.0
 mesh = SubResource("PlaneMesh_jubli")
 script = ExtResource("1_p5mk6")

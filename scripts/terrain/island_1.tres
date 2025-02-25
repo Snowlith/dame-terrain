@@ -19,7 +19,7 @@ frequency = 0.0081
 noise = SubResource("FastNoiseLite_ovcli")
 
 [sub_resource type="Gradient" id="Gradient_6ytjt"]
-offsets = PackedFloat32Array(0, 0.232019, 0.306264, 0.726218, 0.842227)
+offsets = PackedFloat32Array(0, 0.232019, 0.306264, 0.812227, 0.882096)
 colors = PackedColorArray(0, 0, 0, 1, 0.358886, 0.358886, 0.358886, 1, 0.495262, 0.495262, 0.495262, 1, 0.728538, 0.728538, 0.728538, 1, 1, 1, 1, 1)
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_qy7qw"]
@@ -43,7 +43,7 @@ noise = SubResource("FastNoiseLite_ikybf")
 shader = ExtResource("1_6ytjt")
 shader_parameter/mode = 3
 shader_parameter/cycle_mode = false
-shader_parameter/amplitude = 100.0
+shader_parameter/amplitude = 112.454
 shader_parameter/normal_sampling_distance = 4.0
 shader_parameter/steepness_sampling_distance = 4.0
 shader_parameter/biome_sampling_distance = 4.0

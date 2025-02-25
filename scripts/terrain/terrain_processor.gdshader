@@ -40,35 +40,11 @@ float bilinear_sample(sampler2D tex, vec2 uv, vec2 tex_size) {
     return mix(t, b, f.y);
 }
 
-//vec4 texturePointSmooth(sampler2D smp, vec2 uv, vec2 pixel_size)
-//{
-	//vec2 ddx = dFdx(uv);
-	//vec2 ddy = dFdy(uv);
-	//vec2 lxy = sqrt(ddx * ddx + ddy * ddy);
-	//
-	//vec2 uv_pixels = uv / pixel_size;
-	//
-	//vec2 uv_pixels_floor = round(uv_pixels) - vec2(0.5f);
-	//vec2 uv_dxy_pixels = uv_pixels - uv_pixels_floor;
-	//
-	//uv_dxy_pixels = clamp((uv_dxy_pixels - vec2(0.5f)) * pixel_size / lxy + vec2(0.5f), 0.0f, 1.0f);
-	//
-	//uv = uv_pixels_floor * pixel_size;
-	//
-	//return textureGrad(smp, uv + uv_dxy_pixels * pixel_size, ddx, ddy);
-//}
-//
-//vec3 encode_height(float height) {
-	//float r = floor(height * 255.0) / 255.0;
-	//float g = floor(fract(height * 255.0) * 255.0) / 255.0;
-	//float b = fract(height * 255.0 * 255.0);
-	//return vec3(r + g + b, 0.0, 0.0);
-//}
-
 float get_height_smooth(vec2 pos) {
 	vec2 tex_size = vec2(textureSize(noise_map, 0));
     float noise = bilinear_sample(noise_map, pos, tex_size);
-	//noise = texture(noise_map, pos).r;
+	//float noise = texture(noise_map, pos).r;
+	//float falloff = texture(falloff_map, pos).r;
     float falloff = bilinear_sample(falloff_map, pos, tex_size);
 	//falloff = texture(falloff_map, pos).r;
     return noise * falloff;
