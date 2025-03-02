@@ -104,3 +104,39 @@ wind_direction={
 "type": "vec3",
 "value": Vector3(1, 0, 0)
 }
+height_map={
+"type": "sampler2D",
+"value": ""
+}
+normal_map={
+"type": "sampler2D",
+"value": ""
+}
+height_map_amplitude={
+"type": "float",
+"value": 200.0
+}
+partition_size={
+"type": "float",
+"value": 0.0
+}
+partition_lod_step={
+"type": "int",
+"value": 0
+}
+partition_lod_zero_radius={
+"type": "int",
+"value": 0
+}
+biome_map={
+"type": "sampler2D",
+"value": ""
+}
+steepness_map={
+"type": "sampler2D",
+"value": ""
+}
+terrain_position={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}

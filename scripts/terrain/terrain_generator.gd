@@ -7,14 +7,15 @@ class_name TerrainGenerator
 @export var terrain_processing_material: ShaderMaterial
 
 @export_group("Partition Configuration")
+@export var partition_scene: PackedScene
 @export var partition_container: Node3D
 @export var render_distance: int = 10
-@export var partition_size: float = 16.0
-@export var partition_lod_step: float = 1.0
+@export var partition_size: float = 32.0
+@export var partition_lod_step: int = 1
 @export var partition_lod_zero_radius: int = 2
 
-@export var terrain_material: ShaderMaterial
-@export var water_material: ShaderMaterial
+#@export var terrain_material: ShaderMaterial
+#@export var water_material: ShaderMaterial
 
 @export_group("Node Configuration")
 @export var player_character: Node3D
@@ -22,7 +23,6 @@ class_name TerrainGenerator
 @export var foliage_particles: Array[GPUParticles3D]
 
 const COLLIDER = preload("res://scripts/terrain/terrain_collider.tscn")
-const PARTITION = preload("res://scripts/terrain/terrain_partition.tscn")
 const PROCESSOR = preload("res://scripts/terrain/terrain_processor.tscn")
 
 @onready var static_body: StaticBody3D = get_parent_entity().get_physics_body()
@@ -53,14 +53,18 @@ func _ready():
 	generate_terrain()
 
 func _physics_process(delta):
-	partition_container.global_position = player_character.global_position.snapped(Vector3.ONE * partition_size) * Vector3(1, 0, 1)
-	terrain_material.set_shader_parameter("terrain_position", partition_container.global_position)
-	water_material.set_shader_parameter("terrain_position", partition_container.global_position)
+	var player_position: Vector3 = player_character.global_position
+	partition_container.global_position = player_position.snapped(Vector3.ONE * partition_size) * Vector3(1, 0, 1)
+	RenderingServer.global_shader_parameter_set("terrain_position", partition_container.global_position)
+	RenderingServer.global_shader_parameter_set("player_position", player_position)
 
 func generate_terrain():
 	print("[TerrainGenerator] Generating...")
-	if not terrain_processing_material or not terrain_material or not water_material:
-		print("[TerrainGenerator] ERROR: Material missing!")
+	if not terrain_processing_material: #or not terrain_material or not water_material:
+		push_error("[TerrainGenerator] ERROR: Material missing!")
+		return
+	if not partition_scene:
+		push_error("[TerrainGenerator] ERROR: Partition not assigned!")
 		return
 	configure_shader_uniforms()
 	await generate_maps()
@@ -95,25 +99,38 @@ func generate_maps():
 	sprite_2d.texture = height_texture
 	sprite_2d_2.texture = normal_texture
 	
-	terrain_material.set_shader_parameter("amplitude", amplitude)
-	terrain_material.set_shader_parameter("partition_size", partition_size)
-	terrain_material.set_shader_parameter("partition_lod_step", partition_lod_step)
-	terrain_material.set_shader_parameter("partition_lod_zero_radius", partition_lod_zero_radius)
-	terrain_material.set_shader_parameter("height_map", height_texture)
-	terrain_material.set_shader_parameter("normal_map", normal_texture)
-	terrain_material.set_shader_parameter("biome_map", biome_texture)
+	RenderingServer.global_shader_parameter_set("height_map_amplitude", amplitude)
+	RenderingServer.global_shader_parameter_set("partition_size", partition_size)
+	RenderingServer.global_shader_parameter_set("partition_lod_step", partition_lod_step)
+	RenderingServer.global_shader_parameter_set("partition_lod_zero_radius", partition_lod_zero_radius)
+	RenderingServer.global_shader_parameter_set("height_map", height_texture)
+	RenderingServer.global_shader_parameter_set("normal_map", normal_texture)
+	RenderingServer.global_shader_parameter_set("biome_map", biome_texture)
+	RenderingServer.global_shader_parameter_set("steepness_map", steepness_texture)
+	RenderingServer.global_shader_parameter_set("height_map_amplitude", amplitude)
+	RenderingServer.global_shader_parameter_set("height_map_amplitude", amplitude)
 	
-	water_material.set_shader_parameter("amplitude", amplitude)
-	water_material.set_shader_parameter("partition_size", partition_size)
-	water_material.set_shader_parameter("partition_lod_step", partition_lod_step)
-	water_material.set_shader_parameter("partition_lod_zero_radius", partition_lod_zero_radius)
-	
-	for gpu_particles: GPUParticles3D in foliage_particles:
-		var mat: ShaderMaterial = gpu_particles.process_material
-		mat.set_shader_parameter("amplitude", amplitude)
-		mat.set_shader_parameter("height_map", height_texture)
-		mat.set_shader_parameter("normal_map", normal_texture)
-		mat.set_shader_parameter("biome_map", biome_texture)
+	#terrain_material.set_shader_parameter("amplitude", amplitude)
+	#terrain_material.set_shader_parameter("partition_size", partition_size)
+	#terrain_material.set_shader_parameter("partition_lod_step", partition_lod_step)
+	#terrain_material.set_shader_parameter("partition_lod_zero_radius", partition_lod_zero_radius)
+	#terrain_material.set_shader_parameter("height_map", height_texture)
+	#terrain_material.set_shader_parameter("normal_map", normal_texture)
+	#terrain_material.set_shader_parameter("biome_map", biome_texture)
+	#
+	#water_material.set_shader_parameter("terrain_amplitude", amplitude)
+	#water_material.set_shader_parameter("partition_size", partition_size)
+	#water_material.set_shader_parameter("partition_lod_step", partition_lod_step)
+	#water_material.set_shader_parameter("partition_lod_zero_radius", partition_lod_zero_radius)
+	#
+	#water_material.set_shader_parameter("terrain_height_map", height_texture)
+
+	#for gpu_particles: GPUParticles3D in foliage_particles:
+		#var mat: ShaderMaterial = gpu_particles.process_material
+		#mat.set_shader_parameter("amplitude", amplitude)
+		#mat.set_shader_parameter("height_map", height_texture)
+		#mat.set_shader_parameter("normal_map", normal_texture)
+		#mat.set_shader_parameter("biome_map", biome_texture)
 	
 	remove_child(terrain_processor)
 	terrain_processor.queue_free()
@@ -139,15 +156,17 @@ func generate_partitions():
 		partition_container.remove_child(partition)
 		partition.queue_free()
 	partitions.clear()
+	
+	var partition_custom_aabb: AABB = AABB(-Vector3(1, 0, 1) * partition_size / 2, Vector3(partition_size, amplitude, partition_size))
 		
 	for x in range(-render_distance, render_distance + 1):
 		for z in range(-render_distance, render_distance + 1):
-			var partition: TerrainPartition = PARTITION.instantiate()
+			var partition: TerrainPartition = partition_scene.instantiate()
 			
 			partition.x = x
 			partition.z = z
-			partition.material_override = terrain_material
 			partition.size = partition_size
+			partition.custom_aabb = partition_custom_aabb
 			partition.lod_step = partition_lod_step
 			partition.lod_zero_radius = partition_lod_zero_radius
 			

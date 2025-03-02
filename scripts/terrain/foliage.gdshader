@@ -16,15 +16,12 @@ uniform vec3 min_scale = vec3(1.0);
 uniform vec3 max_scale = vec3(1.0);
 
 group_uniforms externally_assigned;
-uniform sampler2D height_map: hint_default_white;
-uniform vec2 height_map_offset = vec2(0.5);
-uniform sampler2D normal_map: hint_normal;
-uniform vec2 normal_map_offset = vec2(0.5);
-uniform sampler2D biome_map: hint_default_black;
-uniform vec2 biome_map_offset = vec2(0.5);
+global uniform sampler2D height_map: hint_default_white, repeat_disable;
+global uniform sampler2D normal_map: hint_normal, repeat_disable;
+global uniform sampler2D biome_map: hint_default_black, repeat_disable;
 uniform sampler2D density_map;
 uniform vec2 density_map_offset = vec2(0.5);
-uniform float amplitude = 1.0;
+global uniform float height_map_amplitude = 1.0;
 
 render_mode disable_velocity, disable_force;
 
@@ -45,30 +42,27 @@ mat4 rotate_y(float theta) {
     return mat4(vec4(cos(theta), 0, -sin(theta), 0), vec4(0, 1, 0, 0), vec4(sin(theta), 0, cos(theta), 0), vec4(0, 0, 0, 1));
 }
 
-vec4 sample_bounded(sampler2D sampler, vec3 world_vertex, vec2 uv_offset, vec4 default_argument) {
-	vec2 uv = (world_vertex.xz + vec2(0.5)) / float(textureSize(sampler,0).x);
-
-	if (abs(uv.x) > 0.5 || abs(uv.y) > 0.5) {
-		return default_argument;
-	}
+vec4 sample_centered(sampler2D sampler, vec3 position) {
+	vec2 uv = (position.xz + vec2(0.5)) / vec2(textureSize(sampler,0));
 	
-	return texture(sampler, uv + uv_offset);
+	return texture(sampler, uv + vec2(0.5));
 }
 
-float get_height(vec3 world_vertex){
-	return sample_bounded(height_map, world_vertex, height_map_offset, vec4(0.0)).r * amplitude;
+float get_height(vec3 position){
+	return sample_centered(height_map, position).r * height_map_amplitude;
 }
 
-vec3 get_biome(vec3 world_vertex) {
-	return sample_bounded(biome_map, world_vertex, biome_map_offset, vec4(0.0, 0.0, 1.0, 0.0)).rgb;
+vec3 get_biome(vec3 position) {
+	return sample_centered(biome_map, position).rgb;
 }
 
-vec3 get_normal(vec3 world_vertex) {
-	return sample_bounded(normal_map, world_vertex, normal_map_offset, vec4(0.5, 0.5, 1.0, 0.0)).rgb;
+vec3 get_normal(vec3 position) {
+	return sample_centered(normal_map, position).rgb;
 }
 
-float get_density(vec3 world_vertex) {
-	return sample_bounded(density_map, world_vertex, density_map_offset, vec4(0.0)).r;
+float get_density(vec3 position) {
+	vec2 uv = (position.xz + vec2(0.5)) / vec2(textureSize(density_map,0));
+	return texture(density_map, uv).r;
 }
 
 void start() {

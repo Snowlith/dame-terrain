@@ -45,12 +45,10 @@ varying vec3 view_normal;
 //uniform sampler2D foam_albedo: hint_default_white;
 
 
-group_uniforms externally_assigned;
-uniform float amplitude = 1.0;
-uniform float partition_size = 16.0;
-uniform int partition_lod_step = 1;
-uniform int partition_lod_zero_radius = 1;
-uniform vec3 terrain_position;
+global uniform float partition_size = 16.0;
+global uniform int partition_lod_step = 1;
+global uniform int partition_lod_zero_radius = 1;
+global uniform vec3 terrain_position;
 
 // Varying variables
 varying vec3 world_vertex;
