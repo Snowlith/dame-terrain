@@ -1,7 +1,7 @@
 shader_type spatial;
 
 //render_mode wireframe;
-render_mode diffuse_toon, specular_schlick_ggx;
+render_mode diffuse_burley, specular_schlick_ggx;
 
 // TODO: make LODs circular?
 

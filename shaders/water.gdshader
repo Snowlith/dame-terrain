@@ -1,16 +1,17 @@
 shader_type spatial;
 render_mode shadows_disabled, cull_disabled;
 
+//#define SSR
+#define SNELL
+
 group_uniforms color;
-uniform vec3 absorption_color : source_color = vec3(1.0, 0.35, 0.0);
-uniform vec3 foam_color: source_color = vec3(0.97);
+uniform vec3 absorption_albedo : source_color = vec3(1.0, 0.35, 0.0);
 
+uniform vec3 fresnel_albedo : source_color = vec3(0.0, 0.57, 0.72);
 uniform float fresnel_radius : hint_range(0.0, 6.0, 0.01) = 2.0;
-uniform vec3 fresnel_color : source_color = vec3(0.0, 0.57, 0.72);
 
-uniform float roughness : hint_range(0.0, 1.0, 0.01) = 0.15;
-uniform float foam_roughness = 1.0;
-uniform float specular : hint_range(0.0, 1.0, 0.01) = 0.25;
+uniform float base_roughness : hint_range(0.0, 1.0, 0.01) = 0.15;
+uniform float base_specular : hint_range(0.0, 1.0, 0.01) = 0.25;
 // Depth adjustment
 uniform float depth_distance : hint_range(0.0, 50.0, 0.1) = 25.0;
 uniform float beers_law : hint_range(0.0, 20.0, 0.1) = 4.5;
@@ -20,7 +21,6 @@ uniform float base_height = 10.0;
 uniform float wave_amplitude: hint_range(0.0, 100.0) = 2.0;
 uniform vec2 wave_velocity = vec2(1.0, 0.0);
 uniform sampler2D wave_height_map: hint_default_white;
-uniform sampler2D wave_normal_map: hint_normal;
 
 //group_uniforms displacement;
 //uniform float displacement_strength : hint_range(0.0, 5.0, 0.1) = 0.3;
@@ -30,7 +30,10 @@ uniform sampler2D wave_normal_map: hint_normal;
 //uniform vec2 displacement_scale = vec2(0.04);
 //uniform sampler2D displacement_texture : hint_default_black, repeat_enable;
 
-group_uniforms edge;
+group_uniforms foam;
+uniform vec3 foam_albedo: source_color = vec3(0.97);
+uniform float foam_roughness = 1.0;
+uniform float foam_specular: hint_range(0.0, 1.0, 0.01) = 0.25;
 uniform float edge_thickness : hint_range(0.0, 1.0, 0.001) = 0.3;
 uniform float edge_speed : hint_range(0.0, 1.0, 0.001) = 0.35;
 uniform vec2 edge_noise_scale = vec2(0.4);
@@ -47,12 +50,21 @@ uniform float caustic_size : hint_range(0.0, 8.0, 0.01) = 2.0;
 uniform float caustic_range : hint_range(0.0, 256.0, 0.1) = 40.0;
 uniform float caustic_strength : hint_range(0.0, 1.0, 0.01) = 0.08;
 
-//group_uniforms screen_space_reflections;
-//uniform float ssr_mix_strength : hint_range(0.0, 1.0, 0.01) = 0.65;
-//uniform float ssr_travel : hint_range(0.0, 300.0, 0.5) = 100.0;
-//uniform float ssr_resolution_near : hint_range(0.1, 10.0, 0.1) = 1.0;
-//uniform float ssr_resolution_far : hint_range(2.0, 20.0, 0.1) = 5.0;
-//uniform float ssr_tolerance : hint_range(0.0, 2.0, 0.01) = 1.0;
+#ifdef SNELL
+group_uniforms snell;
+uniform vec3 snell_albedo: source_color;
+uniform vec3 snell_direction = vec3(0.0, 1.0, 0.0);
+uniform float snell_tightness : hint_range(0.0, 1.0) = 0.7;
+#endif
+
+#ifdef SSR
+group_uniforms screen_space_reflections;
+uniform float ssr_mix_strength : hint_range(0.0, 1.0, 0.01) = 0.65;
+uniform float ssr_travel : hint_range(0.0, 300.0, 0.5) = 100.0;
+uniform float ssr_resolution_near : hint_range(0.1, 10.0, 0.1) = 1.0;
+uniform float ssr_resolution_far : hint_range(2.0, 20.0, 0.1) = 5.0;
+uniform float ssr_tolerance : hint_range(0.0, 2.0, 0.01) = 1.0;
+#endif
 
 group_uniforms normal_map;
 uniform float refraction_strength : hint_range(0.0, 4.0, 0.01) = 1.25;
@@ -157,6 +169,10 @@ float fresnel(vec3 normal, vec3 view) {
 	return pow((1.0 - clamp(dot(normalize(normal), normalize(view)), 0.0, 1.0 )), fresnel_radius);
 }
 
+float snell(float amount, vec3 normal, vec3 view) {
+	return step(amount, clamp(dot(normalize(normal), normalize(view)), 0.0, 1.0 ));
+}
+
 
 vec2 refract_uv(inout vec2 uv, vec3 normal, float depth){
 	float strength1 = refraction_strength * depth;
@@ -231,7 +247,7 @@ void vertex() {
 
 
 void fragment() {
-	vec3 opposing_color = vec3(1.0) - absorption_color.rgb;
+	vec3 opposing_color = vec3(1.0) - absorption_albedo;
 	vec3 normalized_wind_direction = normalize(wind_direction);
 	float wind_intens_factor = fma(wind_intensity, 0.7, 0.3);
 
@@ -270,8 +286,9 @@ void fragment() {
 	player_effect_mask = clamp(normalize( fma(wave_distort, -1.0, 0.4)), 0.0, 1.0);
 
 	// combine Edge Mask with Player Ripples
-	float ripple_mask = clamp(edge_mask * edge_blend, 0.0, 1.0);
-	ripple_mask += player_effect_mask;
+	float foam_mask = clamp(edge_mask * edge_blend, 0.0, 1.0);
+	foam_mask += player_effect_mask;
+	foam_mask *= float(FRONT_FACING);
 
 	// Calculate Fragment Depth
 	vec4 clip_pos = PROJECTION_MATRIX * vec4(VERTEX, 1.0);
@@ -316,46 +333,58 @@ void fragment() {
 		depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
 	}
 
-	//vec3 view_normal_map = mat3(VIEW_MATRIX) * (vec3(NORMAL_MAP.x, 0.0, NORMAL_MAP.y) * 2.0 - 1.0);
-	//vec3 combined_normal = normalize(view_normal_map * (NORMAL_MAP_DEPTH * 0.15) + NORMAL);
-	//vec3 reflacted_path = reflect(-VIEW, combined_normal);
-//
-	//vec2 current_screen_pos = vec2(0.0);
-	//vec3 current_view_pos = VERTEX;
-	//vec3 sampled_color = vec3(-1.0);
-	//float current_stepD = 0.0;
-	//float current_depth = 0.0;
-	//float alpha_hit = 0.0;
-	//for(float i = 0.01; i < ssr_travel; i++) {
-		//current_stepD = mix(ssr_resolution_near, ssr_resolution_far,float(i) / float(ssr_travel));
-		//current_view_pos += reflacted_path * current_stepD;
-		//current_screen_pos = get_uv_from_view_position(current_view_pos, PROJECTION_MATRIX);
-		//if (!in_bounds(current_screen_pos)) {break;}
-		//current_depth = get_view_position_from_uv(current_screen_pos, texture(depth_texture, current_screen_pos).x, INV_PROJECTION_MATRIX).z - current_view_pos.z;
-//
-		//if (current_depth > -0.0001 && current_depth <= ssr_tolerance * current_stepD) {
-			//sampled_color = textureLod(screen_texture, current_screen_pos, 0.5).rgb;
-			//vec2 ruv = 1.0 - abs(current_screen_pos * 2.0 - 1.0);
-			//ruv = pow(ruv, vec2(0.5));
-			//alpha_hit = clamp(min(ruv.x, ruv.y), 0.0, 1.0);
-			//break;
-		//}
-		//i += current_stepD;
-	//}
+	vec3 color = clamp(screen - absorption_albedo * depth_blend, vec3(0.0), vec3(1.0));
+	color = mix(color, opposing_color, depth_blend * depth_blend);
 
-	vec3 color = clamp(screen - absorption_color.rgb * depth_blend, vec3(0.0), vec3(1.0)); // Absorb Screen Color
-	color = mix(color, opposing_color, depth_blend*depth_blend); // Apply depth color
-
-	color = mix(color, fresnel_color, fresnel_value); // Apply fresnel color
+	color = mix(color, fresnel_albedo, fresnel_value);
 
 	color = clamp(color + caustic_value * caustic_strength * (1.0 - depth_blend), vec3(0.0), vec3(1.0));
-//
-	//color = mix(color, sampled_color, alpha_hit * (1.0 - roughness) * ssr_mix_strength);
-
-	color = mix(color, foam_color, ripple_mask); // Apply Ripples
 	
-	ROUGHNESS = mix(roughness, foam_roughness, ripple_mask);
+#ifdef SNELL
+	vec3 snell_normal = vec3(NORMAL.x, NORMAL.y, NORMAL.z);
+	float snell_factor = snell(snell_tightness, snell_normal, VIEW);
+	if (FRONT_FACING) {
+		snell_factor = 1.0;
+	}
+	//final_refraction_opacity *= snell_factor;
+	//final_refraction_opacity = clamp(final_refraction_opacity, 0.0, 1.0);
+	color = mix(snell_albedo, color, snell_factor);
+#endif
+
+#ifdef SSR
+	vec3 view_normal_map = mat3(VIEW_MATRIX) * (vec3(NORMAL_MAP.x, 0.0, NORMAL_MAP.y) * 2.0 - 1.0);
+	vec3 combined_normal = normalize(view_normal_map * (NORMAL_MAP_DEPTH * 0.15) + NORMAL);
+	vec3 reflacted_path = reflect(-VIEW, combined_normal);
+
+	vec2 current_screen_pos = vec2(0.0);
+	vec3 current_view_pos = VERTEX;
+	vec3 sampled_color = vec3(-1.0);
+	float current_stepD = 0.0;
+	float current_depth = 0.0;
+	float alpha_hit = 0.0;
+	for(float i = 0.01; i < ssr_travel; i++) {
+		current_stepD = mix(ssr_resolution_near, ssr_resolution_far,float(i) / float(ssr_travel));
+		current_view_pos += reflacted_path * current_stepD;
+		current_screen_pos = get_uv_from_view_position(current_view_pos, PROJECTION_MATRIX);
+		if (!in_bounds(current_screen_pos)) {break;}
+		current_depth = get_view_position_from_uv(current_screen_pos, texture(depth_texture, current_screen_pos).x, INV_PROJECTION_MATRIX).z - current_view_pos.z;
+
+		if (current_depth > -0.0001 && current_depth <= ssr_tolerance * current_stepD) {
+			sampled_color = textureLod(screen_texture, current_screen_pos, 0.5).rgb;
+			vec2 ruv = 1.0 - abs(current_screen_pos * 2.0 - 1.0);
+			ruv = pow(ruv, vec2(0.5));
+			alpha_hit = clamp(min(ruv.x, ruv.y), 0.0, 1.0);
+			break;
+		}
+		i += current_stepD;
+	}
+	
+	color = mix(color, sampled_color, alpha_hit * (1.0 - base_roughness) * ssr_mix_strength);
+#endif
+
+	color = mix(color, foam_albedo, foam_mask);
+	
 	ALBEDO = color;
-	//ROUGHNESS = roughness;
-	SPECULAR = specular;
+	ROUGHNESS = mix(base_roughness, foam_roughness, foam_mask);
+	SPECULAR =  mix(base_specular, foam_specular, foam_mask);
 }
