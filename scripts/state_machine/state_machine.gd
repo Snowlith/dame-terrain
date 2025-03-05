@@ -39,7 +39,6 @@ func _physics_process(delta):
 		selected_state = new_state
 		selected_state.enter()
 		state_changed.emit()
-		#print(selected_state)
 	
 	selected_state.handle(delta)
 	

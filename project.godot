@@ -80,6 +80,10 @@ switch_mouse_mode={
 ]
 }
 
+[layer_names]
+
+3d_render/layer_20="Water Effects"
+
 [physics]
 
 common/physics_interpolation=true
@@ -87,8 +91,8 @@ common/physics_interpolation=true
 [rendering]
 
 lights_and_shadows/use_physical_light_units=true
-lights_and_shadows/directional_shadow/size=8192
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+anti_aliasing/quality/screen_space_aa=1
 
 [shader_globals]
 
@@ -120,10 +124,6 @@ partition_size={
 "type": "float",
 "value": 0.0
 }
-partition_lod_step={
-"type": "int",
-"value": 0
-}
 partition_lod_zero_radius={
 "type": "int",
 "value": 0
@@ -139,4 +139,8 @@ steepness_map={
 terrain_position={
 "type": "vec3",
 "value": Vector3(0, 0, 0)
+}
+partition_lod_step={
+"type": "int",
+"value": 1
 }

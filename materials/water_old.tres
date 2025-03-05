@@ -1,0 +1,60 @@
+[gd_resource type="ShaderMaterial" load_steps=9 format=3 uid="uid://d15g5nnsik8mq"]
+
+[ext_resource type="Shader" uid="uid://cm31wwsso4h0l" path="res://shaders/water_old.gdshader" id="1_eudm2"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ioias"]
+noise_type = 0
+frequency = 0.0054
+fractal_octaves = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_7dbiv"]
+seamless = true
+noise = SubResource("FastNoiseLite_ioias")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_w0qja"]
+noise_type = 2
+frequency = 0.0098
+fractal_octaves = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3sy5w"]
+seamless = true
+seamless_blend_skirt = 0.36
+noise = SubResource("FastNoiseLite_w0qja")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_oohy8"]
+frequency = 0.1118
+offset = Vector3(-392.52, 0, 0)
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_oohy8"]
+seamless = true
+noise = SubResource("FastNoiseLite_oohy8")
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_3emfr"]
+seamless = true
+as_normal_map = true
+noise = SubResource("FastNoiseLite_oohy8")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_eudm2")
+shader_parameter/base_height = 3.485
+shader_parameter/wave_amplitude = 1.735
+shader_parameter/wave_velocity = Vector2(0.005, 0)
+shader_parameter/wave_height_map = SubResource("NoiseTexture2D_oohy8")
+shader_parameter/wave_normal_map = SubResource("NoiseTexture2D_3emfr")
+shader_parameter/foam_albedo = SubResource("NoiseTexture2D_7dbiv")
+shader_parameter/foam_tiling = Vector2(64, 64)
+shader_parameter/foam_velocity = Vector2(0.185, 0)
+shader_parameter/foam_distortion = SubResource("NoiseTexture2D_3sy5w")
+shader_parameter/foam_distortion_tiling = Vector2(128, 128)
+shader_parameter/foam_distortion_velocity = Vector2(0.003, 0.005)
+shader_parameter/foam_distortion_strength = 0.939
+shader_parameter/foam_max_distance = -1000.0
+shader_parameter/foam_min_distance = 0.565
+shader_parameter/foam_color = Color(1, 1, 1, 1)
+shader_parameter/beer_factor = 0.105
+shader_parameter/surface_noise_cutoff = 0.853
+shader_parameter/shallow_color = Color(0.325, 0.807, 0.971, 0.725)
+shader_parameter/deep_color = Color(0.086, 0.407, 1, 0.749)
+shader_parameter/depth_threshold = 0.508
+shader_parameter/depth_bias = 1.11

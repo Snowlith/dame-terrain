@@ -2,7 +2,7 @@
 extends Component
 class_name TerrainGenerator
 
-@export_tool_button("Generate") var generate_button = generate_terrain
+@export_tool_button("Generate", "GridMap") var generate_button = generate_terrain
 
 @export var terrain_processing_material: ShaderMaterial
 
@@ -14,13 +14,9 @@ class_name TerrainGenerator
 @export var partition_lod_step: int = 1
 @export var partition_lod_zero_radius: int = 2
 
-#@export var terrain_material: ShaderMaterial
-#@export var water_material: ShaderMaterial
-
 @export_group("Node Configuration")
 @export var player_character: Node3D
 @export var physics_bodies: Array[PhysicsBody3D] = []
-@export var foliage_particles: Array[GPUParticles3D]
 
 const COLLIDER = preload("res://scripts/terrain/terrain_collider.tscn")
 const PROCESSOR = preload("res://scripts/terrain/terrain_processor.tscn")

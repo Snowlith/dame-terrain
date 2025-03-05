@@ -18,8 +18,6 @@ var start_pos: Vector3
 # TODO: move hand naturally
 
 func _ready():
-	assert(parent_entity.get_physics_body() is CharacterBody3D)
-	
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	camera.rotation_order = EULER_ORDER_XYZ # Fixes camera turning problems
 	process_priority = 100 # Updates after other nodes
