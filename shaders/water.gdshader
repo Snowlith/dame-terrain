@@ -1,10 +1,13 @@
 shader_type spatial;
-render_mode shadows_disabled, cull_disabled;
+render_mode shadows_disabled, cull_disabled, depth_draw_always;
 
 //#define SSR
+#define DISTANCE_FADE
+//#define CAUSTICS
 #define SNELL
 
 group_uniforms color;
+uniform vec3 emission: source_color = vec3(0.0);
 uniform vec3 absorption_albedo : source_color = vec3(1.0, 0.35, 0.0);
 
 uniform vec3 fresnel_albedo : source_color = vec3(0.0, 0.57, 0.72);
@@ -12,49 +15,54 @@ uniform float fresnel_radius : hint_range(0.0, 6.0, 0.01) = 2.0;
 
 uniform float base_roughness : hint_range(0.0, 1.0, 0.01) = 0.15;
 uniform float base_specular : hint_range(0.0, 1.0, 0.01) = 0.25;
-// Depth adjustment
+
 uniform float depth_distance : hint_range(0.0, 50.0, 0.1) = 25.0;
 uniform float beers_law : hint_range(0.0, 20.0, 0.1) = 4.5;
+
+#ifdef DISTANCE_FADE
+group_uniforms distance_fade;
+uniform float near_fade_min = 1.0;
+uniform float near_fade_max = 1.5;
+
+uniform float far_fade_min = 500.0;
+uniform float far_fade_max = 700.0;
+#endif
 
 group_uniforms waves;
 uniform float base_height = 10.0;
 uniform float wave_amplitude: hint_range(0.0, 100.0) = 2.0;
-uniform vec2 wave_velocity = vec2(1.0, 0.0);
+uniform vec2 wave_velocity = vec2(0.01);
 uniform sampler2D wave_height_map: hint_default_white;
-
-//group_uniforms displacement;
-//uniform float displacement_strength : hint_range(0.0, 5.0, 0.1) = 0.3;
-//uniform float displacement_scroll_speed : hint_range(0.0, 1.0, 0.001) = 0.1;
-//uniform vec2 displacement_scroll_offset = vec2 (-0.2, 0.3);
-//uniform float displacement_scale_offset = 0.5;
-//uniform vec2 displacement_scale = vec2(0.04);
-//uniform sampler2D displacement_texture : hint_default_black, repeat_enable;
 
 group_uniforms foam;
 uniform vec3 foam_albedo: source_color = vec3(0.97);
 uniform float foam_roughness = 1.0;
 uniform float foam_specular: hint_range(0.0, 1.0, 0.01) = 0.25;
-uniform float edge_thickness : hint_range(0.0, 1.0, 0.001) = 0.3;
-uniform float edge_speed : hint_range(0.0, 1.0, 0.001) = 0.35;
-uniform vec2 edge_noise_scale = vec2(0.4);
-uniform sampler2D edge_noise : repeat_enable;
-uniform sampler2D edge_ramp : repeat_disable;
+uniform vec2 foam_velocity = vec2(0.1);
+uniform float foam_thickness : hint_range(0.0, 5.0, 0.001) = 0.1;
+uniform float foam_bubble_thickness : hint_range(0.0, 5.0, 0.001) = 0.5;
+uniform float foam_bubble_threshold: hint_range(0.0, 1.0, 0.01) = 0.8;
+uniform float foam_bubble_smoothing: hint_range(0.0, 1.0, 0.01) = 0.3;
+uniform sampler2D foam_bubble_noise: repeat_enable;
+uniform vec2 foam_bubble_scale = vec2(0.4);
 
-group_uniforms player;
-uniform float influence_size : hint_range(0.0, 4.0, 0.1) = 1.0;
-uniform float player_wave_frequenzy : hint_range(0.0, 20.0, 0.1) = 10.0;
-uniform float player_wave_speed : hint_range(0.0, 10.0, 0.1) = 5.0;
+//group_uniforms player;
+//uniform float influence_size : hint_range(0.0, 4.0, 0.1) = 1.0;
+//uniform float player_wave_frequenzy : hint_range(0.0, 20.0, 0.1) = 10.0;
+//uniform float player_wave_speed : hint_range(0.0, 10.0, 0.1) = 5.0;
 
+#ifdef CAUSTICS
 group_uniforms caustics;
 uniform float caustic_size : hint_range(0.0, 8.0, 0.01) = 2.0;
 uniform float caustic_range : hint_range(0.0, 256.0, 0.1) = 40.0;
 uniform float caustic_strength : hint_range(0.0, 1.0, 0.01) = 0.08;
+#endif
 
 #ifdef SNELL
 group_uniforms snell;
 uniform vec3 snell_albedo: source_color;
 uniform vec3 snell_direction = vec3(0.0, 1.0, 0.0);
-uniform float snell_tightness : hint_range(0.0, 1.0) = 0.7;
+uniform float snell_index : hint_range(0.0, 2.0) = 1.333;
 #endif
 
 #ifdef SSR
@@ -66,14 +74,18 @@ uniform float ssr_resolution_far : hint_range(2.0, 20.0, 0.1) = 5.0;
 uniform float ssr_tolerance : hint_range(0.0, 2.0, 0.01) = 1.0;
 #endif
 
-group_uniforms normal_map;
+group_uniforms refraction;
 uniform float refraction_strength : hint_range(0.0, 4.0, 0.01) = 1.25;
-uniform float normal_map_strength : hint_range(0.0, 4.0, 0.01) = 1.0;
-uniform float scroll_speed : hint_range(0.0, 1.0, 0.01) = 0.3;
-uniform vec2 scroll_offset = vec2(0.1, -0.3);
-uniform float scale_offset = 0.5;
-uniform vec2 normal_map_scale = vec2(0.1);
+
+group_uniforms normal_map;
 uniform sampler2D normal_map : hint_normal, filter_linear_mipmap;
+uniform vec2 normal_map_scale = vec2(0.1);
+uniform vec2 normal_map_velocity = vec2(0.1);
+uniform float normal_map_depth : hint_range(0.0, 4.0, 0.01) = 0.2;
+uniform float normal_map_lod: hint_range(0.0, 20.0) = 2.0;
+//uniform float scroll_speed : hint_range(0.0, 1.0, 0.01) = 0.3;
+//uniform vec2 scroll_offset = vec2(0.1, -0.3);
+//uniform float scale_offset = 0.5;
 
 global uniform float partition_size = 16.0;
 global uniform int partition_lod_step = 1;
@@ -169,15 +181,14 @@ float fresnel(vec3 normal, vec3 view) {
 	return pow((1.0 - clamp(dot(normalize(normal), normalize(view)), 0.0, 1.0 )), fresnel_radius);
 }
 
-float snell(float amount, vec3 normal, vec3 view) {
-	return step(amount, clamp(dot(normalize(normal), normalize(view)), 0.0, 1.0 ));
+float snells_window(vec3 normal, vec3 view, float ior) {
+	float cos_theta = dot(normal, view);
+	return step(sqrt(1.0 - cos_theta * cos_theta) * ior, 1.0);
 }
 
-
-vec2 refract_uv(inout vec2 uv, vec3 normal, float depth){
-	float strength1 = refraction_strength * depth;
-	uv += fma(strength1, length(normal), strength1 * -1.2);
-	return uv;
+vec2 get_refracted_uv(vec2 uv, vec3 normal, float depth, float strength){
+	float a = strength * depth;
+	return uv + fma(a, length(normal), a * -1.2);
 }
 
 vec2 get_uv_from_view_position(vec3 position_view_space, mat4 proj_m)
@@ -235,29 +246,18 @@ void vertex() {
 	);
 
 	global_position.y = VERTEX.y;
-
-	//float time = TIME * displacement_scroll_speed * fma(wind_intensity, 0.7, 0.3);
-	//float displace1 = texture(displacement_texture, fma(global_position.xz, displacement_scale, time * -wind_direction.xz)).r;
-	//float displace2 = texture(displacement_texture, fma(global_position.xz, displacement_scale * displacement_scale_offset, time * (-wind_direction.xz + displacement_scroll_offset))).r;
-	//float displacement_mixed = mix(displace1, displace2, 0.4);
-	//float offset = fma(displacement_mixed, 2.0, -1.0) * displacement_strength;
-	//VERTEX.y += offset;
-	//global_position.y += offset;
 }
 
 
 void fragment() {
 	vec3 opposing_color = vec3(1.0) - absorption_albedo;
-	vec3 normalized_wind_direction = normalize(wind_direction);
-	float wind_intens_factor = fma(wind_intensity, 0.7, 0.3);
 
 	float fresnel_value = fresnel(NORMAL, VIEW);
-
-	float time_factor = TIME * scroll_speed * wind_intens_factor;
-	vec3 n1 = textureLod(normal_map, fma(global_position.xz, normal_map_scale, time_factor * -normalized_wind_direction.xz), 2.0).xyz;
-	vec3 n2 = textureLod(normal_map, fma(global_position.xz, normal_map_scale * scale_offset, time_factor * 0.8 * (-normalized_wind_direction.xz + scroll_offset)), 2.0).xyz;
-	NORMAL_MAP = mix(n1, n2, 0.5);
-	NORMAL_MAP_DEPTH = normal_map_strength;
+	
+	vec2 normal_map_uv = fma(global_position.xz, normal_map_scale, normal_map_velocity * TIME);
+	vec3 n1 = textureLod(normal_map, normal_map_uv, normal_map_lod).rgb;
+	NORMAL_MAP = n1;
+	NORMAL_MAP_DEPTH = normal_map_depth;
 
 	float depth_tex = texture(depth_texture, SCREEN_UV).r;
 
@@ -266,38 +266,43 @@ void fragment() {
 	world.y /= world.w;
 	float vertex_y = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).y;
 	float relative_depth = vertex_y - world.y;
-
-
-	// Create Edge caused by other Objects
-	float edge_blend = clamp(relative_depth / -edge_thickness + 1.0, 0.0, 1.0);
-	vec2 edge_noise_uv = global_position.xz * edge_noise_scale * fma(normalized_wind_direction.xz, vec2(0.5), vec2(0.5));
-	edge_noise_uv = fma(-normalized_wind_direction.xz * TIME * edge_speed, vec2(wind_intens_factor), edge_noise_uv);
-	float edge_noise_sample = texture(edge_noise, edge_noise_uv).r;
-	float edge_mask = normalize( texture(edge_ramp, vec2(edge_noise_sample * fma(edge_blend, -1., 1.))).r);
-
-	// Create Ripples caused by player
-	float player_effect_mask = 0.0;
 	
-	vec3 player_relative = vec3(global_position - player_position);
-	float player_height = smoothstep(1.0, 0.0, abs(player_relative.y));
-	float player_position_factor = smoothstep(influence_size, 0.0, length(player_relative.xz));
-	float player_waves = pow( fma( sin(fma(player_position_factor, player_wave_frequenzy, TIME * player_wave_speed)), 0.5, 0.5), 6.0);
-	float wave_distort = texture( edge_ramp, vec2( player_waves * player_position_factor * player_height)).x;
-	player_effect_mask = clamp(normalize( fma(wave_distort, -1.0, 0.4)), 0.0, 1.0);
+	float edge_mask = 1.0 - step(1.0, relative_depth / foam_thickness);
+	
+	float bubble_blend = 1.0 - clamp((relative_depth - foam_thickness) / foam_bubble_thickness, 0.0, 1.0);
+	vec2 bubble_uv = fma(global_position.xz, foam_bubble_scale, foam_velocity * TIME);
+	float bubble_mask = 1.0 - texture(foam_bubble_noise, bubble_uv).r;
+	bubble_mask = step(foam_bubble_threshold, bubble_blend * (bubble_mask + foam_bubble_smoothing));
+	
+	float foam_mask = clamp(edge_mask + bubble_mask, 0.0, 1.0);
+	foam_mask *= float(FRONT_FACING);
+	
+#ifdef DISTANCE_FADE
+	float distance_from_camera = distance(CAMERA_POSITION_WORLD, global_position);
+	ALPHA *= smoothstep(near_fade_min, near_fade_max, distance_from_camera);
+	ALPHA *= smoothstep(far_fade_max, far_fade_min, distance_from_camera);
+#endif
+	
+	//// Create Ripples caused by player
+	//float player_effect_mask = 0.0;
+	//
+	//vec3 player_relative = vec3(global_position - player_position);
+	//float player_height = smoothstep(1.0, 0.0, abs(player_relative.y));
+	//float player_position_factor = smoothstep(influence_size, 0.0, length(player_relative.xz));
+	//float player_waves = pow( fma( sin(fma(player_position_factor, player_wave_frequenzy, TIME * player_wave_speed)), 0.5, 0.5), 6.0);
+	//float wave_distort = texture(foam_edge_ramp, vec2( player_waves * player_position_factor * player_height)).x;
+	//player_effect_mask = clamp(normalize( fma(wave_distort, -1.0, 0.4)), 0.0, 1.0);
 
 	// combine Edge Mask with Player Ripples
-	float foam_mask = clamp(edge_mask * edge_blend, 0.0, 1.0);
-	foam_mask += player_effect_mask;
-	foam_mask *= float(FRONT_FACING);
-
+	
+	float final_refraction_strength = refraction_strength;
+	
 	// Calculate Fragment Depth
 	vec4 clip_pos = PROJECTION_MATRIX * vec4(VERTEX, 1.0);
 	clip_pos.xyz /= clip_pos.w;
 	DEPTH = clip_pos.z;
-	// Refract UV
-	vec2 refracted_uv = SCREEN_UV;
-	refract_uv(refracted_uv, NORMAL_MAP, sqrt(DEPTH) * relative_depth);
-
+	vec2 refracted_uv = get_refracted_uv(SCREEN_UV, NORMAL_MAP, sqrt(DEPTH) * relative_depth, final_refraction_strength);
+	
 	vec3 screen;
 	float depth_blend;
 	float refracted_depth_tex = texture(depth_texture, refracted_uv).x;
@@ -305,7 +310,23 @@ void fragment() {
 	world = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
 	world.xyz /= world.w;
 	float depth_test = vertex_y - world.y;
+	
+#ifdef SNELL
+	float snell_mask = 1.0;
+	vec3 snell_normal = NORMAL;// - vec3(refraction_offset * 2.0, 0.0);
+	if(!FRONT_FACING) {
+		snell_mask = snells_window(snell_normal, VIEW, snell_index);
+	}
+	//float snell_factor = get_snell(NORMAL, VIEW);
+	//if (FRONT_FACING) {
+		//snell_factor = 1.0;
+	//}
+	//final_refraction_strength *= snell_factor;
+	//final_refraction_strength = clamp(final_refraction_strength, 0.0, 1.0);
+#endif
 
+
+#ifdef CAUSTICS
 	// Caustic Effects
 	float range_mod = clamp((VERTEX.z + caustic_range) * 0.05, 0.0, 1.0);
 	float caustic_value = 0.0;
@@ -316,39 +337,37 @@ void fragment() {
 		noiseResult = os2NoiseWithDerivatives_Fallback(X - noiseResult.xyz / 16.0);
 		caustic_value = fma(noiseResult.w, 0.5, 0.5) * range_mod * range_mod;
 	}
+#endif
 
 	/*
 	Sometimes the Water Refraction would cause the sampling of a screen position that is either
 	outside the screen bounds or where another object is infront of the water.
 	Switching back to the unrefracted SCREEN_UV fixes that.
 	*/
-
-	if (depth_test > -0.0001 && in_bounds(refracted_uv)) {
-		screen = texture(screen_texture, refracted_uv).rgb * 0.9;
-		depth_blend = clamp(depth_test / depth_distance, 0.0, 1.0);
-		depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
-	} else {
-		screen = texture(screen_texture, SCREEN_UV).rgb * 0.9;
-		depth_blend = clamp(relative_depth / depth_distance, 0.0, 1.0);
-		depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
-	}
+	screen = texture(screen_texture, refracted_uv).rgb * 0.9;
+	depth_blend = clamp(depth_test / depth_distance, 0.0, 1.0);
+	depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
+	//if (depth_test > -0.0001 && in_bounds(refracted_uv)) {
+		//screen = texture(screen_texture, refracted_uv).rgb * 0.9;
+		//depth_blend = clamp(depth_test / depth_distance, 0.0, 1.0);
+		//depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
+	//} else {
+		//screen = texture(screen_texture, SCREEN_UV).rgb * 0.9;
+		//depth_blend = clamp(relative_depth / depth_distance, 0.0, 1.0);
+		//depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
+	//}
 
 	vec3 color = clamp(screen - absorption_albedo * depth_blend, vec3(0.0), vec3(1.0));
 	color = mix(color, opposing_color, depth_blend * depth_blend);
 
 	color = mix(color, fresnel_albedo, fresnel_value);
-
-	color = clamp(color + caustic_value * caustic_strength * (1.0 - depth_blend), vec3(0.0), vec3(1.0));
 	
+#ifdef CAUSTICS
+	color = clamp(color + caustic_value * caustic_strength * (1.0 - depth_blend), vec3(0.0), vec3(1.0));
+#endif
+
 #ifdef SNELL
-	vec3 snell_normal = vec3(NORMAL.x, NORMAL.y, NORMAL.z);
-	float snell_factor = snell(snell_tightness, snell_normal, VIEW);
-	if (FRONT_FACING) {
-		snell_factor = 1.0;
-	}
-	//final_refraction_opacity *= snell_factor;
-	//final_refraction_opacity = clamp(final_refraction_opacity, 0.0, 1.0);
-	color = mix(snell_albedo, color, snell_factor);
+	color = mix(snell_albedo, color, snell_mask);
 #endif
 
 #ifdef SSR
@@ -385,6 +404,7 @@ void fragment() {
 	color = mix(color, foam_albedo, foam_mask);
 	
 	ALBEDO = color;
+	//ALBEDO = mix(vec3(0.0), vec3(1.0), 1.0 - relative_depth/1.0);
 	ROUGHNESS = mix(base_roughness, foam_roughness, foam_mask);
-	SPECULAR =  mix(base_specular, foam_specular, foam_mask);
+	SPECULAR = mix(base_specular, foam_specular, foam_mask);
 }

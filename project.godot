@@ -98,7 +98,7 @@ anti_aliasing/quality/screen_space_aa=1
 
 wind_intensity={
 "type": "float",
-"value": 1.0
+"value": 0.335
 }
 player_position={
 "type": "vec3",
@@ -106,7 +106,7 @@ player_position={
 }
 wind_direction={
 "type": "vec3",
-"value": Vector3(1, 0, 0)
+"value": Vector3(1, 0, 4.675)
 }
 height_map={
 "type": "sampler2D",
