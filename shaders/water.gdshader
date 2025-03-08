@@ -83,19 +83,12 @@ uniform vec2 normal_map_scale = vec2(0.1);
 uniform vec2 normal_map_velocity = vec2(0.1);
 uniform float normal_map_depth : hint_range(0.0, 4.0, 0.01) = 0.2;
 uniform float normal_map_lod: hint_range(0.0, 20.0) = 2.0;
-//uniform float scroll_speed : hint_range(0.0, 1.0, 0.01) = 0.3;
-//uniform vec2 scroll_offset = vec2(0.1, -0.3);
-//uniform float scale_offset = 0.5;
 
 global uniform float partition_size = 16.0;
 global uniform int partition_lod_step = 1;
 global uniform int partition_lod_zero_radius = 1;
 global uniform vec3 terrain_position;
 global uniform vec3 player_position;
-
-// Hidden Uniforms
-global uniform float wind_intensity; // Global shader parameter between 0.0 and 1.0
-global uniform vec3 wind_direction;
 
 uniform sampler2D screen_texture: hint_screen_texture, filter_linear_mipmap, repeat_disable;
 uniform sampler2D depth_texture: hint_depth_texture, filter_linear_mipmap, repeat_disable;
@@ -219,6 +212,13 @@ float true_round(float value){
 	return ceil(value - 0.49999);
 }
 
+float rim(float depth) {
+	float near = 7.0;
+	float far = 10000.0;
+	depth = 2.0 * depth - 1.0;
+	return near * far / (far + depth * (near - far));
+}
+
 void vertex() {
 	global_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 
@@ -255,8 +255,7 @@ void fragment() {
 	float fresnel_value = fresnel(NORMAL, VIEW);
 	
 	vec2 normal_map_uv = fma(global_position.xz, normal_map_scale, normal_map_velocity * TIME);
-	vec3 n1 = textureLod(normal_map, normal_map_uv, normal_map_lod).rgb;
-	NORMAL_MAP = n1;
+	NORMAL_MAP = textureLod(normal_map, normal_map_uv, normal_map_lod).rgb;
 	NORMAL_MAP_DEPTH = normal_map_depth;
 
 	float depth_tex = texture(depth_texture, SCREEN_UV).r;
@@ -267,9 +266,21 @@ void fragment() {
 	float vertex_y = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).y;
 	float relative_depth = vertex_y - world.y;
 	
-	float edge_mask = 1.0 - step(1.0, relative_depth / foam_thickness);
+	vec4 view = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
+	view.xyz /= view.w;
 	
-	float bubble_blend = 1.0 - clamp((relative_depth - foam_thickness) / foam_bubble_thickness, 0.0, 1.0);
+	float z_depth_difference = VERTEX.z - view.z;
+	float foam_depth = smoothstep(0.0, foam_thickness, z_depth_difference);
+	float bubble_depth = smoothstep(0.0, foam_bubble_thickness, z_depth_difference - foam_thickness);
+	
+	// z-based approach, no visual issues
+	float edge_mask = 1.0 - step(1.0, foam_depth);
+	float bubble_blend = 1.0 - clamp(bubble_depth, 0.0, 1.0);
+	
+	// y-based approach, glitchy
+	//float edge_mask = 1.0 - step(1.0, relative_depth / foam_thickness);
+	//float bubble_blend = 1.0 - clamp((relative_depth - foam_thickness) / foam_bubble_thickness, 0.0, 1.0);
+	
 	vec2 bubble_uv = fma(global_position.xz, foam_bubble_scale, foam_velocity * TIME);
 	float bubble_mask = 1.0 - texture(foam_bubble_noise, bubble_uv).r;
 	bubble_mask = step(foam_bubble_threshold, bubble_blend * (bubble_mask + foam_bubble_smoothing));
@@ -344,7 +355,7 @@ void fragment() {
 	outside the screen bounds or where another object is infront of the water.
 	Switching back to the unrefracted SCREEN_UV fixes that.
 	*/
-	screen = texture(screen_texture, refracted_uv).rgb * 0.9;
+	screen = texture(screen_texture, refracted_uv).rgb;
 	depth_blend = clamp(depth_test / depth_distance, 0.0, 1.0);
 	depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
 	//if (depth_test > -0.0001 && in_bounds(refracted_uv)) {
@@ -404,7 +415,7 @@ void fragment() {
 	color = mix(color, foam_albedo, foam_mask);
 	
 	ALBEDO = color;
-	//ALBEDO = mix(vec3(0.0), vec3(1.0), 1.0 - relative_depth/1.0);
+	//ALBEDO = vec3(bubble_depth);
 	ROUGHNESS = mix(base_roughness, foam_roughness, foam_mask);
 	SPECULAR = mix(base_specular, foam_specular, foam_mask);
 }

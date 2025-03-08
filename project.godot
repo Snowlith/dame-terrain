@@ -96,17 +96,9 @@ anti_aliasing/quality/screen_space_aa=1
 
 [shader_globals]
 
-wind_intensity={
-"type": "float",
-"value": 0.335
-}
 player_position={
 "type": "vec3",
 "value": Vector3(0, 0, 0)
-}
-wind_direction={
-"type": "vec3",
-"value": Vector3(1, 0, 4.675)
 }
 height_map={
 "type": "sampler2D",
