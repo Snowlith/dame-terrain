@@ -3,7 +3,6 @@ render_mode shadows_disabled, cull_disabled, depth_draw_always;
 
 //#define SSR
 #define DISTANCE_FADE
-//#define CAUSTICS
 #define SNELL
 
 group_uniforms color;
@@ -32,6 +31,8 @@ uniform float base_height = 10.0;
 uniform float wave_amplitude: hint_range(0.0, 100.0) = 2.0;
 uniform vec2 wave_velocity = vec2(0.01);
 uniform sampler2D wave_height_map: hint_default_white;
+uniform sampler2D wave_normal_map: hint_normal;
+uniform float wave_normal_map_strength: hint_range(0.0, 2.0, 0.01) = 1.0;
 
 group_uniforms foam;
 uniform vec3 foam_albedo: source_color = vec3(0.97);
@@ -45,18 +46,11 @@ uniform float foam_bubble_smoothing: hint_range(0.0, 1.0, 0.01) = 0.3;
 uniform sampler2D foam_bubble_noise: repeat_enable;
 uniform vec2 foam_bubble_scale = vec2(0.4);
 
-#ifdef CAUSTICS
-group_uniforms caustics;
-uniform float caustic_size : hint_range(0.0, 8.0, 0.01) = 2.0;
-uniform float caustic_range : hint_range(0.0, 256.0, 0.1) = 40.0;
-uniform float caustic_strength : hint_range(0.0, 1.0, 0.01) = 0.08;
-#endif
-
 #ifdef SNELL
 group_uniforms snell;
 uniform vec3 snell_albedo: source_color;
-uniform vec3 snell_direction = vec3(0.0, 1.0, 0.0);
 uniform float snell_index : hint_range(0.0, 2.0) = 1.333;
+uniform float snell_edge_refraction_factor: hint_range(0.0, 20.0) = 2.0;
 #endif
 
 #ifdef SSR
@@ -71,12 +65,19 @@ uniform float ssr_tolerance : hint_range(0.0, 2.0, 0.01) = 1.0;
 group_uniforms refraction;
 uniform float refraction_strength : hint_range(0.0, 4.0, 0.01) = 1.25;
 
-group_uniforms normal_map;
-uniform sampler2D normal_map : hint_normal, filter_linear_mipmap;
-uniform vec2 normal_map_scale = vec2(0.1);
-uniform vec2 normal_map_velocity = vec2(0.1);
-uniform float normal_map_depth : hint_range(0.0, 4.0, 0.01) = 0.2;
-uniform float normal_map_lod: hint_range(0.0, 20.0) = 2.0;
+group_uniforms detail_normals;
+uniform sampler2D detail_normal_map : hint_normal, filter_linear_mipmap;
+uniform float normal_map_depth: hint_range(0.0, 4.0, 0.01) = 0.2;
+
+uniform vec2 detail_sample_1_scale = vec2(0.1);
+uniform vec2 detail_sample_1_velocity = vec2(0.1);
+uniform float detail_sample_1_strength: hint_range(0.0, 10.0) = 1.0;
+uniform float detail_sample_1_lod: hint_range(0.0, 20.0) = 2.0;
+
+uniform vec2 detail_sample_2_scale = vec2(0.1);
+uniform vec2 detail_sample_2_velocity = vec2(0.1);
+uniform float detail_sample_2_strength: hint_range(0.0, 10.0) = 1.0;
+uniform float detail_sample_2_lod: hint_range(0.0, 20.0) = 2.0;
 
 global uniform float partition_size = 16.0;
 global uniform int partition_lod_step = 1;
@@ -89,81 +90,6 @@ uniform sampler2D depth_texture: hint_depth_texture, filter_linear_mipmap, repea
 
 varying vec3 global_position;
 
-// Permutation polynomial hash credit Stefan Gustavson
-vec4 permute(vec4 t) {
-    return t * (t * 34.0 + 133.0);
-}
-
-// Gradient set is a normalized expanded rhombic dodecahedron
-vec3 grad(float hash) {
-
-    // Random vertex of a cube, +/- 1 each
-    vec3 cube = mod(floor(hash / vec3(1.0, 2.0, 4.0)), 2.0) * 2.0 - 1.0;
-
-    // Random edge of the three edges connected to that vertex
-    // Also a cuboctahedral vertex
-    // And corresponds to the face of its dual, the rhombic dodecahedron
-    vec3 cuboct = cube;
-    cuboct[int(hash / 16.0)] = 0.0;
-
-    // In a funky way, pick one of the four points on the rhombic face
-    float type = mod(floor(hash / 8.0), 2.0);
-    vec3 rhomb = (1.0 - type) * cube + type * (cuboct + cross(cube, cuboct));
-
-    // Expand it so that the new edges are the same length
-    // as the existing ones
-    vec3 grad = fma(cuboct, vec3(1.22474487139), rhomb);
-
-    // To make all gradients the same length, we only need to shorten the
-    // second type of vector. We also put in the whole noise scale constant.
-    // The compiler should reduce it into the existing floats. I think.
-    grad *= fma(-0.042942436724648037, type, 1.0) * 3.5946317686139184;
-
-    return grad;
-}
-
-// BCC lattice split up into 2 cube lattices
-vec4 os2NoiseWithDerivativesPart(vec3 X) {
-    vec3 b = floor(X);
-    vec4 i4 = vec4(X - b, 2.5);
-
-    // Pick between each pair of oppposite corners in the cube.
-    vec3 v1 = b + floor(dot(i4, vec4(.25)));
-    vec3 v2 = b + vec3(1, 0, 0) + vec3(-1, 1, 1) * floor(dot(i4, vec4(-.25, .25, .25, .35)));
-    vec3 v3 = b + vec3(0, 1, 0) + vec3(1, -1, 1) * floor(dot(i4, vec4(.25, -.25, .25, .35)));
-    vec3 v4 = b + vec3(0, 0, 1) + vec3(1, 1, -1) * floor(dot(i4, vec4(.25, .25, -.25, .35)));
-
-    // Gradient hashes for the four vertices in this half-lattice.
-    vec4 hashes = permute(mod(vec4(v1.x, v2.x, v3.x, v4.x), 289.0));
-    hashes = permute(mod(hashes + vec4(v1.y, v2.y, v3.y, v4.y), 289.0));
-    hashes = mod(permute(mod(hashes + vec4(v1.z, v2.z, v3.z, v4.z), 289.0)), 48.0);
-
-    // Gradient extrapolations & kernel function
-    vec3 d1 = X - v1; vec3 d2 = X - v2; vec3 d3 = X - v3; vec3 d4 = X - v4;
-    vec4 a = max(0.75 - vec4(dot(d1, d1), dot(d2, d2), dot(d3, d3), dot(d4, d4)), 0.0);
-    vec4 aa = a * a; vec4 aaaa = aa * aa;
-    vec3 g1 = grad(hashes.x); vec3 g2 = grad(hashes.y);
-    vec3 g3 = grad(hashes.z); vec3 g4 = grad(hashes.w);
-    vec4 extrapolations = vec4(dot(d1, g1), dot(d2, g2), dot(d3, g3), dot(d4, g4));
-
-    // Derivatives of the noise
-    vec4 derivative = -8.0 * mat4(vec4(d1,0.), vec4(d2,0.), vec4(d3,0.), vec4(d4,0.)) * (aa * a * extrapolations)
-        + mat4(vec4(g1, 0.), vec4(g2, 0.), vec4(g3, 0.), vec4(g4, 0.)) * aaaa;
-
-    // Return it all as a vec4
-    return vec4(derivative.xyz, dot(aaaa, extrapolations));
-}
-
-// Rotates domain, but preserve shape. Hides grid better in cardinal slices.
-// Good for texturing 3D objects with lots of flat parts along cardinal planes.
-vec4 os2NoiseWithDerivatives_Fallback(vec3 X) {
-    X = dot(X, vec3(2.0/3.0)) - X;
-
-    vec4 result = os2NoiseWithDerivativesPart(X) + os2NoiseWithDerivativesPart(X + 144.5);
-
-    return vec4(dot(result.xyz, vec3(2.0/3.0)) - result.xyz, result.w);
-}
-
 float fresnel(vec3 normal, vec3 view) {
 	return pow((1.0 - clamp(dot(normalize(normal), normalize(view)), 0.0, 1.0 )), fresnel_radius);
 }
@@ -171,11 +97,6 @@ float fresnel(vec3 normal, vec3 view) {
 float snells_window(vec3 normal, vec3 view, float ior) {
 	float cos_theta = dot(normal, view);
 	return step(sqrt(1.0 - cos_theta * cos_theta) * ior, 1.0);
-}
-
-vec2 get_refracted_uv(vec2 uv, vec3 normal, float depth, float strength){
-	float a = strength * depth;
-	return uv + fma(a, length(normal), a * -1.2);
 }
 
 vec2 get_uv_from_view_position(vec3 position_view_space, mat4 proj_m)
@@ -192,14 +113,14 @@ vec3 get_view_position_from_uv(vec2 uv, float depth, mat4 inv_proj_m)
 	return view_position.xyz /= view_position.w;
 }
 
-bool in_bounds(vec2 uv) {
-	vec2 fruv = abs(floor(uv));
-	return fruv.x + fruv.y < 0.1;
-}
-
 float get_height(vec3 position){
 	vec2 uv = (position.xz + vec2(0.5)) / vec2(textureSize(wave_height_map,0));
-	return base_height + texture(wave_height_map, uv + wave_velocity * TIME).r * wave_amplitude;
+	return base_height + textureLod(wave_height_map, uv + wave_velocity * TIME, 0.0).r * wave_amplitude;
+}
+
+vec3 get_normal(vec3 position){
+	vec2 uv = (position.xz + vec2(0.5)) / vec2(textureSize(wave_normal_map,0));
+	return textureLod(wave_normal_map, uv + wave_velocity * TIME, 0.0).rgb;
 }
 
 float true_round(float value){
@@ -235,21 +156,25 @@ void vertex() {
 	global_position.y = VERTEX.y;
 }
 
-//float compute_depth_blend(float depth) {
-    //float blend = clamp(depth / depth_distance, 0.0, 1.0);
-    //return fma(exp(-blend * beers_law), -1.0, 1.0);
-//}
-
 void fragment() {
 	vec3 opposing_color = vec3(1.0) - absorption_albedo;
 	float fresnel_value = fresnel(NORMAL, VIEW);
 	
-	vec2 normal_map_uv = fma(global_position.xz, normal_map_scale, normal_map_velocity * TIME);
-	NORMAL_MAP = textureLod(normal_map, normal_map_uv, normal_map_lod).rgb;
+	vec3 base_unpacked = fma(get_normal(global_position), vec3(2.0), vec3(-1.0));
+	
+	vec2 detail_sample_1_uv = fma(global_position.xz, detail_sample_1_scale, detail_sample_1_velocity * TIME);
+	vec2 detail_sample_2_uv = fma(global_position.xz, detail_sample_2_scale, detail_sample_2_velocity * TIME);
+	vec3 detail_sample_1_unpacked = fma(textureLod(detail_normal_map, detail_sample_1_uv, detail_sample_1_lod).rgb, vec3(2.0), vec3(-1.0));
+	vec3 detail_sample_2_unpacked = fma(textureLod(detail_normal_map, detail_sample_2_uv, detail_sample_2_lod).rgb, vec3(2.0), vec3(-1.0));
+	
+	vec3 combined = base_unpacked * wave_normal_map_strength + detail_sample_1_unpacked * detail_sample_1_strength + detail_sample_2_unpacked * detail_sample_2_strength;
+	NORMAL_MAP = fma(combined, vec3(0.5), vec3(0.5));
+	
+	//NORMAL_MAP = textureLod(normal_map, normal_map_uv, normal_map_lod).rgb;
 	NORMAL_MAP_DEPTH = normal_map_depth;
 	
-	vec3 normal_refracted = fma(NORMAL_MAP, vec3(2.0), vec3(-1.0));
-	vec2 uv_refracted = SCREEN_UV - normal_refracted.xy * refraction_strength;
+	vec2 refraction_uv_offset = combined.xy * refraction_strength;
+	vec2 uv_refracted = SCREEN_UV - refraction_uv_offset;
 	
 	float depth = textureLod(depth_texture, SCREEN_UV, 0.0).r;
 	float depth_refracted = textureLod(depth_texture, uv_refracted, 0.0).r;
@@ -279,7 +204,6 @@ void fragment() {
 
 	float depth_blend = clamp(relative_depth / depth_distance, 0.0, 1.0);
 	depth_blend = fma(exp(-depth_blend * beers_law), -1.0, 1.0);
-	//depth_blend = exp(-depth_blend * beers_law);
 	
 	vec3 screen;
 	if (linear_depth_refracted > 0.00001) {
@@ -299,7 +223,6 @@ void fragment() {
 	bubble_mask = step(foam_bubble_threshold, bubble_blend * (bubble_mask + foam_bubble_smoothing));
 	
 	float foam_mask = clamp(edge_mask + bubble_mask, 0.0, 1.0);
-	//foam_mask *= float(FRONT_FACING);
 	
 	#ifdef DISTANCE_FADE
 	float distance_from_camera = distance(CAMERA_POSITION_WORLD, global_position);
@@ -311,22 +234,9 @@ void fragment() {
 	color = mix(color, opposing_color, depth_blend * depth_blend);
 	color = mix(color, fresnel_albedo, fresnel_value);
 	
-	#ifdef CAUSTICS
-	float range_mod = clamp((VERTEX.z + caustic_range) * 0.05, 0.0, 1.0);
-	float caustic_value = 0.0;
-	// Protect yourself from calculating Noise at runtime with this handy if statement!
-	if (range_mod > 0.0) {
-		vec3 X = vec3(world.xz * caustic_size, mod(TIME, 578.0) * 0.8660254037844386);
-		vec4 noiseResult = os2NoiseWithDerivatives_Fallback(X);
-		noiseResult = os2NoiseWithDerivatives_Fallback(X - noiseResult.xyz / 16.0);
-		caustic_value = fma(noiseResult.w, 0.5, 0.5) * range_mod * range_mod;
-	}
-	color = clamp(color + caustic_value * caustic_strength * (1.0 - depth_blend), vec3(0.0), vec3(1.0));
-	#endif
-	
 	#ifdef SNELL
 	float snell_mask = 1.0;
-	vec3 snell_normal = normal_refracted;
+	vec3 snell_normal = NORMAL - vec3(refraction_uv_offset, 0.0) * snell_edge_refraction_factor;
 	if(!FRONT_FACING) {
 		snell_mask = snells_window(snell_normal, VIEW, snell_index);
 	}
