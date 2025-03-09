@@ -63,7 +63,7 @@ uniform float ssr_tolerance : hint_range(0.0, 2.0, 0.01) = 1.0;
 #endif
 
 group_uniforms refraction;
-uniform float refraction_strength : hint_range(0.0, 4.0, 0.01) = 1.25;
+uniform float refraction_strength : hint_range(0.0, 1.0, 0.01) = 0.1;
 
 group_uniforms detail_normals;
 uniform sampler2D detail_normal_map : hint_normal, filter_linear_mipmap;

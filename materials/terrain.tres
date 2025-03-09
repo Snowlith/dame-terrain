@@ -16,7 +16,7 @@
 render_priority = 0
 next_pass = ExtResource("1_6hvoq")
 shader = ExtResource("1_451qi")
-shader_parameter/normal_depth = 1.247
+shader_parameter/normal_depth = 2.0
 shader_parameter/triplanar_blend_sharpness = 35.124
 shader_parameter/grass_albedo = Color(0.959902, 1, 0.914842, 1)
 shader_parameter/grass_texture_albedo = ExtResource("8_jx758")

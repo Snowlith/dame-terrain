@@ -30,16 +30,13 @@ var amplitude: float
 signal maps_calculated
 # TODO: connect to this signal in grass 
 
+var height_image: Image
+var normal_image: Image
 var biome_image: Image
-var biome_texture: ImageTexture
 
 var height_texture: ImageTexture
-var steepness_texture: ImageTexture
 var normal_texture: ImageTexture
-
-var height_image: Image
-var steepness_image: Image
-var normal_image: Image
+var biome_texture: ImageTexture
 
 var partitions: Array[TerrainPartition]
 
@@ -79,16 +76,13 @@ func generate_maps():
 	
 	height_image = await terrain_processor.get_image(0)
 	normal_image = await terrain_processor.get_image(1)
-	steepness_image = await terrain_processor.get_image(2)
 	biome_image = await terrain_processor.get_image(3)
 	
-	#height_image.generate_mipmaps(true)
-	#steepness_image.generate_mipmaps(true)
-	#biome_image.generate_mipmaps(true)
-	#normal_image.generate_mipmaps(true)
+	height_image.generate_mipmaps(true)
+	biome_image.generate_mipmaps(true)
+	normal_image.generate_mipmaps(true)
 	
 	height_texture = ImageTexture.create_from_image(height_image)
-	steepness_texture = ImageTexture.create_from_image(steepness_image)
 	normal_texture = ImageTexture.create_from_image(normal_image)
 	biome_texture = ImageTexture.create_from_image(biome_image)
 	
@@ -102,31 +96,8 @@ func generate_maps():
 	RenderingServer.global_shader_parameter_set("height_map", height_texture)
 	RenderingServer.global_shader_parameter_set("normal_map", normal_texture)
 	RenderingServer.global_shader_parameter_set("biome_map", biome_texture)
-	RenderingServer.global_shader_parameter_set("steepness_map", steepness_texture)
 	RenderingServer.global_shader_parameter_set("height_map_amplitude", amplitude)
 	RenderingServer.global_shader_parameter_set("height_map_amplitude", amplitude)
-	
-	#terrain_material.set_shader_parameter("amplitude", amplitude)
-	#terrain_material.set_shader_parameter("partition_size", partition_size)
-	#terrain_material.set_shader_parameter("partition_lod_step", partition_lod_step)
-	#terrain_material.set_shader_parameter("partition_lod_zero_radius", partition_lod_zero_radius)
-	#terrain_material.set_shader_parameter("height_map", height_texture)
-	#terrain_material.set_shader_parameter("normal_map", normal_texture)
-	#terrain_material.set_shader_parameter("biome_map", biome_texture)
-	#
-	#water_material.set_shader_parameter("terrain_amplitude", amplitude)
-	#water_material.set_shader_parameter("partition_size", partition_size)
-	#water_material.set_shader_parameter("partition_lod_step", partition_lod_step)
-	#water_material.set_shader_parameter("partition_lod_zero_radius", partition_lod_zero_radius)
-	#
-	#water_material.set_shader_parameter("terrain_height_map", height_texture)
-
-	#for gpu_particles: GPUParticles3D in foliage_particles:
-		#var mat: ShaderMaterial = gpu_particles.process_material
-		#mat.set_shader_parameter("amplitude", amplitude)
-		#mat.set_shader_parameter("height_map", height_texture)
-		#mat.set_shader_parameter("normal_map", normal_texture)
-		#mat.set_shader_parameter("biome_map", biome_texture)
 	
 	remove_child(terrain_processor)
 	terrain_processor.queue_free()
@@ -134,7 +105,7 @@ func generate_maps():
 	maps_calculated.emit()
 	
 func generate_colliders():
-	for physics_body in physics_bodies:
+	for physics_body: PhysicsBody3D in physics_bodies:
 		var collider: TerrainCollider = COLLIDER.instantiate()
 		
 		collider.physics_body = physics_body
@@ -146,17 +117,17 @@ func generate_colliders():
 
 func generate_partitions():
 	if not partition_container:
-		print("[TerrainGenerator] ERROR: Partition container missing!")
+		push_error("[TerrainGenerator] Partition container missing!")
 		return
 	for partition in partitions:
 		partition_container.remove_child(partition)
 		partition.queue_free()
 	partitions.clear()
 	
-	var partition_custom_aabb: AABB = AABB(-Vector3(1, 0, 1) * partition_size / 2, Vector3(partition_size, amplitude, partition_size))
+	var partition_custom_aabb := AABB(-Vector3(1, 0, 1) * partition_size / 2, Vector3(partition_size, amplitude, partition_size))
 		
-	for x in range(-render_distance, render_distance + 1):
-		for z in range(-render_distance, render_distance + 1):
+	for x: int in range(-render_distance, render_distance + 1):
+		for z: int in range(-render_distance, render_distance + 1):
 			var partition: TerrainPartition = partition_scene.instantiate()
 			
 			partition.x = x

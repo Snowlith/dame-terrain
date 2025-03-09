@@ -73,22 +73,22 @@ vec3 triplanarize(sampler2D sampler, vec3 weights, vec3 triplanar_pos) {
 	return sample;
 }
 
-vec4 sample_centered(sampler2D sampler, vec3 position) {
+vec4 sample_centered(sampler2D sampler, vec3 position, float lod) {
 	vec2 uv = (position.xz + vec2(0.5)) / vec2(textureSize(sampler,0));
 	
-	return texture(sampler, uv + vec2(0.5));
+	return textureLod(sampler, uv + vec2(0.5), lod);
 }
 
 float get_height(vec3 position){
-	return sample_centered(height_map, position).r * height_map_amplitude;
+	return sample_centered(height_map, position, 0.0).r * height_map_amplitude;
 }
 
 vec3 get_biome(vec3 position) {
-	return sample_centered(biome_map, position).rgb;
+	return sample_centered(biome_map, position, 0.0).rgb;
 }
 
 vec3 get_normal(vec3 position) {
-	return sample_centered(normal_map, position).rgb;
+	return sample_centered(normal_map, position, 0.0).rgb;
 }
 
 //vec3 get_debug_lod_albedo(vec3 position, int lod) {

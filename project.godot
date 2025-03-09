@@ -124,10 +124,6 @@ biome_map={
 "type": "sampler2D",
 "value": ""
 }
-steepness_map={
-"type": "sampler2D",
-"value": ""
-}
 terrain_position={
 "type": "vec3",
 "value": Vector3(0, 0, 0)

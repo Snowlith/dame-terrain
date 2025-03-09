@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://c0c4at6dndxd6"]
+[gd_scene load_steps=25 format=3 uid="uid://c0c4at6dndxd6"]
 
 [ext_resource type="Script" uid="uid://dvo1ntsvt3g3m" path="res://core/ecs/entity.gd" id="1_tuyoq"]
 [ext_resource type="Script" uid="uid://i7ugslpkcywi" path="res://scripts/camera/camera_manager.gd" id="2_fjrip"]
@@ -17,6 +17,7 @@
 [ext_resource type="AudioStream" uid="uid://br82llud7e4qb" path="res://assets/audio/footsteps/dirt/footstep_dirt-01.ogg" id="11_oprun"]
 [ext_resource type="AudioStream" uid="uid://dxe6p2fo1we4k" path="res://assets/audio/footsteps/dirt/footstep_dirt-02.ogg" id="12_a8ls1"]
 [ext_resource type="Script" uid="uid://dhoyglncwng6x" path="res://scripts/footstep_manager/footstep_manager.gd" id="13_jej6c"]
+[ext_resource type="Script" uid="uid://cpa3axi0jidlc" path="res://scripts/state_machine/states/water_state.gd" id="15_fulsm"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_3v2ag"]
 radius = 0.4
@@ -117,6 +118,14 @@ script = ExtResource("5_fjrip")
 allow_bunnyhop = true
 jump_sound = SubResource("AudioStreamRandomizer_qfm1y")
 metadata/_custom_type_script = "uid://y5ucxy6sm8pe"
+
+[node name="WaterState" type="Node" parent="StateMachine"]
+script = ExtResource("15_fulsm")
+max_speed = 20.0
+acceleration = 8.0
+friction = 6.0
+gravity = 7.0
+metadata/_custom_type_script = "uid://cpa3axi0jidlc"
 
 [node name="PanelContainer" type="PanelContainer" parent="StateMachine"]
 visible = false
