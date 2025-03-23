@@ -75,7 +75,7 @@ vec3 triplanarize(sampler2D sampler, vec3 weights, vec3 triplanar_pos) {
 
 vec4 sample_centered(sampler2D sampler, vec3 position, float lod) {
 	vec2 uv = (position.xz + vec2(0.5)) / vec2(textureSize(sampler,0));
-	
+
 	return textureLod(sampler, uv + vec2(0.5), lod);
 }
 
@@ -115,33 +115,33 @@ void vertex() {
 	global_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 
 	vec3 terrain_vertex = global_position - terrain_position;
-	
+
 	float lod = true_round(max(abs(terrain_vertex.x), abs(terrain_vertex.z)) / partition_size) * float(partition_lod_step);
 	lod = max(0.0, lod - float(partition_lod_zero_radius * partition_lod_step));
-	
+
 	float subdivision_size = min(pow(2, lod), partition_size);
 
 	vec3 fraction = fract((VERTEX + partition_size / 2.0) / subdivision_size);
 
 	VERTEX.y = mix(
 		mix(
-			get_height(global_position - vec3(fraction.x * subdivision_size, 0, 0)), 
-			get_height(global_position + vec3((1.0-fraction.x) * subdivision_size, 0, 0)), 
+			get_height(global_position - vec3(fraction.x * subdivision_size, 0, 0)),
+			get_height(global_position + vec3((1.0-fraction.x) * subdivision_size, 0, 0)),
 			fraction.x
-		), 
+		),
 		mix(
-			get_height(global_position - vec3(0, 0, fraction.z * subdivision_size)), 
-			get_height(global_position + vec3(0, 0, (1.0-fraction.z) * subdivision_size)), 
+			get_height(global_position - vec3(0, 0, fraction.z * subdivision_size)),
+			get_height(global_position + vec3(0, 0, (1.0-fraction.z) * subdivision_size)),
 			fraction.z
-		), 
+		),
 		ceil(fraction.z)
 	);
 
 	global_position.y = VERTEX.y;
-	
+
 	// vertex normals
 	NORMAL = unpack_normal_map(get_normal(global_position));
-	
+
 	triplanar_weights = pow(abs(NORMAL), vec3(triplanar_blend_sharpness));
 	triplanar_weights /= dot(triplanar_weights, vec3(1.0));
 }
@@ -155,7 +155,7 @@ void fragment() {
 	vec3 b_position = fma(global_position, sand_uv_scale, sand_uv_offset);
 
 	vec3 biome = get_biome(global_position);
-	
+
 	// albedo
 	//vec3 r_albedo = grass_albedo * triplanarize(grass_texture_albedo, triplanar_weights, r_position);
 	//vec3 g_albedo = cliff_albedo * triplanarize(cliff_texture_albedo, triplanar_weights, g_position);
@@ -163,7 +163,7 @@ void fragment() {
 	vec3 r_albedo = grass_albedo * texture(grass_texture_albedo, r_position.xz).rgb;
 	vec3 g_albedo = cliff_albedo * triplanarize(cliff_texture_albedo, triplanar_weights, g_position);
 	vec3 b_albedo = sand_albedo * texture(sand_texture_albedo, b_position.xz).rgb;
-	
+
 	ALBEDO = r_albedo * biome.r + g_albedo * biome.g + b_albedo * biome.b;
 
 	// ARM: ambient occlusion, roughness, metallic
@@ -173,7 +173,7 @@ void fragment() {
 	vec3 r_arm = texture(grass_arm, r_position.xz).rgb;
 	vec3 g_arm = triplanarize(cliff_arm, triplanar_weights, g_position);
 	vec3 b_arm = texture(sand_arm, b_position.xz).rgb;
-	
+
 	AO = r_arm[0] * biome.r + g_arm[0] * biome.g + b_arm[0] * biome.b;
 	ROUGHNESS = r_arm[1] * biome.r + g_arm[1] * biome.g + b_arm[1] * biome.b;
 	METALLIC = r_arm[2] * biome.r + g_arm[2] * biome.g + b_arm[2] * biome.b;
@@ -185,16 +185,16 @@ void fragment() {
 	vec3 r_normal = texture(grass_normal, r_position.xz).rgb;
 	vec3 g_normal = triplanarize(cliff_normal, triplanar_weights, g_position);
 	vec3 b_normal = texture(sand_normal, b_position.xz).rgb;
-	
+
 	vec3 base_unpacked = fma(get_normal(global_position), vec3(2.0), vec3(-1.0));
 	vec3 r_unpacked = fma(r_normal, vec3(2.0), vec3(-1.0)) * biome.r;
 	vec3 g_unpacked = fma(g_normal, vec3(2.0), vec3(-1.0)) * biome.g;
 	vec3 b_unpacked = fma(b_normal, vec3(2.0), vec3(-1.0)) * biome.b;
-	
+
 	NORMAL_MAP = fma(base_unpacked + r_unpacked + g_unpacked + b_unpacked, vec3(0.5), vec3(0.5));
 	//NORMAL_MAP = (base_unpacked) * 0.5 + 0.5;
 	NORMAL_MAP_DEPTH = normal_depth;
-	
+
 	// specular
 	SPECULAR = grass_specular * biome.r + cliff_specular * biome.g + sand_specular * biome.b;
 }

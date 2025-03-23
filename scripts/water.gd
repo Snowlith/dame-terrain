@@ -2,6 +2,8 @@ extends Area3D
 
 var entities: Array[Entity]
 
+@export var world_environment: BiomeWorldEnvironment
+
 @onready var water_overlay: TextureRect = $WaterOverlay
 
 func _ready():
@@ -21,6 +23,7 @@ func _on_body_entered(body: Node3D):
 		return
 	if water_state.enter_water(self):
 		water_overlay.show()
+		world_environment.switch_to_environment_type(BiomeWorldEnvironment.EnvironmentType.Water)
 		entities.append(entity)
 
 func _on_body_exited(body: Node3D):
@@ -30,5 +33,6 @@ func _on_body_exited(body: Node3D):
 	var found = entities.find(entity)
 	if found != -1:
 		water_overlay.hide()
+		world_environment.switch_to_environment_type(BiomeWorldEnvironment.EnvironmentType.Default)
 		entity.get_component(WaterState).exit_water()
 		entities.remove_at(found)

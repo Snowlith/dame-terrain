@@ -12,11 +12,11 @@ uniform float screen_sampling_lod = 2.0;
 
 void fragment() {
     vec2 uv = SCREEN_UV;
-	
+
 	vec2 distortion_uv = fma(uv, distortion_scale, distortion_offset + distortion_velocity * TIME);
 	vec2 distortion_sample = textureLod(distortion_map, distortion_uv, distortion_lod).xy * 2.0 - 1.0;
 	vec2 distortion_uv_offset = distortion_sample * distortion_strength;
 	vec2 uv_distorted = uv - distortion_uv_offset;
-	
+
 	COLOR = textureLod(screen_texture, uv_distorted, screen_sampling_lod);
 }

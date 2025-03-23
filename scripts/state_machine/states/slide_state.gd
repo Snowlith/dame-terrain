@@ -114,7 +114,7 @@ func handle(delta: float):
 	_apply_acceleration(max_speed, acceleration, delta)
 	_apply_friction(friction, delta)
 	_adjust_snap_length()
-	cam_bob.disable()
+	#cam_bob.disable()
 		
 	_cb.move_and_slide()
 	

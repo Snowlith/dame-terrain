@@ -11,12 +11,15 @@ var active: bool = false
 
 var current_water
 
-var camera_offset: Vector3
+@onready var camera: Camera3D = get_parent_entity().get_component(CameraManager).get_camera()
+@export var cam_bob: CameraBobManager
 
 func handle(delta: float):
-	var input_vector = _get_input_vector()
-	input_vector.y = input_int("jump") - input_int("crouch")
-	input_vector = _cb.global_basis * input_vector
+	var input_vector: Vector3 = camera.global_basis * _get_input_vector()
+	var alternate_y = input_int("jump") - input_int("crouch")
+	if abs(alternate_y) > abs(input_vector.y):
+		input_vector.y = alternate_y
+	input_vector = input_vector.normalized()
 	
 	if not input_vector:
 		_cb.velocity = lerp(_cb.velocity, Vector3.ZERO, friction * delta)
@@ -39,8 +42,10 @@ func enter_water(water):
 		return false
 	active = true
 	current_water = water
+	cam_bob.disable()
 	return true
 
 func exit_water():
 	active = false
 	current_water = null
+	cam_bob.enable()

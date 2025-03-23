@@ -3,7 +3,7 @@ class_name MovementState
 
 var _initial_snap_length: float
 
-func _get_input_vector():
+func _get_input_vector() -> Vector3:
 	return Vector3(input_int("right") - input_int("left"), 0, input_int("down") - input_int("up"))
 
 func _apply_acceleration(max_speed: float, acceleration: float, delta: float) -> void:

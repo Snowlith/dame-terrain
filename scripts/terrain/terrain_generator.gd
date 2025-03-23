@@ -28,7 +28,6 @@ const PROCESSOR = preload("res://scripts/terrain/terrain_processor.tscn")
 var amplitude: float
 
 signal maps_calculated
-# TODO: connect to this signal in grass 
 
 var height_image: Image
 var normal_image: Image

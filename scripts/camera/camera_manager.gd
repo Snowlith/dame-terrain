@@ -50,6 +50,11 @@ func _process(delta):
 	
 	camera.position = start_pos + cumulative_offset
 
+func get_camera() -> Camera3D:
+	if camera:
+		return camera
+	return get_node_or_null("Camera3D")
+
 func get_look_dir() -> Vector3:
 	return -camera.global_transform.basis.z
 
